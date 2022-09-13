@@ -1,0 +1,32 @@
+doctype html
+html(lang="en")
+	head
+		<!-- SCRIPTS -->
+		<link rel="stylesheet" type="text/css" href="css/style.css" />
+
+		title scrumblr
+
+body
+	h1 <a href="https://github.com/lspevak/scrumblr" target="_blank">scrumblr</a>
+
+	div.board-outline
+		div#board
+			div#board-doodles
+
+			table#board-table.board-table
+				tr
+					td
+						h1.home scrumblr.
+						form.home(onsubmit="return go();")
+							label name your new board:
+							br
+							input.text(type="text", name="name")
+							a#go(onclick="return go();") &nbsp;go.
+						<br><br>
+						p.home example board:
+						p.home!= '<a href="//' + locals.url + '/demo">' + locals.url + '/demo</a>'
+						<br><br><br>
+						p.home.small sourcecode (fork) at <a href="https://github.com/lspevak/scrumblr" target="_blank">github</a>
+
+	div.active-connections= "connections: " + connected
+<script type="text/javascript">function go() {var value = document.forms[0].elements["name"].value; value = escape(value); window.location.href = value; return false;}</script>

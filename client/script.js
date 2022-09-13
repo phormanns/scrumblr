@@ -1,29 +1,36 @@
 var cards = {};
-var totalcolumns = 0;
+var columnsCount = 0;
 var columns = [];
 var currentTheme = "bigcards";
 var boardInitialized = false;
 var keyTrap = null;
+var ctrlPressed = false;
+var selectBoxX1 = 0, selectBoxY1 = 0, selectBoxX2 = 0, selectBoxY2 = 0;
+var isSelectBoxActive = false
 
 var baseurl = location.pathname.substring(0, location.pathname.lastIndexOf('/'));
-//var socket = io();
-// We move socket.io from it's default URL (/socket.io) to (/socketio) because during
-// the upgrade to new socket.io, old clients on production server were hitting old
-// URL and crashing the server.
-var socket = io({
-    path: '/socketio'
-});
-//an action has happened, send it to the
-//server
+var socket = io.connect({path: baseurl + "/socket.io"});
+
+var cardColours = [
+    'white',
+    'yellow',
+    'green',
+    'blue',
+    'orange',
+    'purple',
+    'red'
+];
+
+//an action has happened, send it to the server
 function sendAction(a, d) {
-    //console.log('--> ' + a);
+    // console.log('--> ' + a);
 
     var message = {
         action: a,
         data: d
     };
 
-    socket.send(message);
+    socket.json.send(message);
 }
 
 socket.on('connect', function() {
@@ -32,7 +39,7 @@ socket.on('connect', function() {
     //let the final part of the path be the room name
     var room = location.pathname.substring(location.pathname.lastIndexOf('/'));
 
-    //imediately join the room which will trigger the initializations
+    //immediately join the room which will trigger the initializations
     sendAction('joinRoom', room);
 });
 
@@ -46,7 +53,6 @@ socket.on('message', function(data) {
 });
 
 function unblockUI() {
-    $('.board-outline').trigger('initboard');
     $.unblockUI({fadeOut: 50});
 }
 
@@ -74,12 +80,11 @@ function blockUI(message) {
 
 //respond to an action event
 function getMessage(m) {
-    var message = m; //JSON.parse(m);
+    var message = m;
     var action = message.action;
     var data = message.data;
 
-    //console.log('<-- ' + action);
-    //console.log(message);
+    // alert('action received: ' + action)
 
     switch (action) {
         case 'roomAccept':
@@ -101,9 +106,7 @@ function getMessage(m) {
             break;
 
         case 'createCard':
-            //console.log(data);
-            drawNewCard(data.id, data.text, data.x, data.y, data.rot, data.colour, data.type, null,
-                null);
+            drawNewCard(data.id, data.text, data.x, data.y, data.rot, data.colour, null, data.type);
             break;
 
         case 'deleteCard':
@@ -115,12 +118,19 @@ function getMessage(m) {
             break;
 
         case 'editCard':
-            if (data.value) $("#" + data.id).children('.content:first').text(data.value);
-            if (data.colour)
-            {
-                $('#' + data.id).children('.change-colour').data('colour',data.colour);
-                $('#' + data.id).children('.card-image').attr("src", 'images/' + data.colour + '-card.png');
+            cardObj = $("#" + data.id)
+            if (data.value) {
+                cardObj.children('.content:first').attr('data-text', data.value);
+                cardObj.children('.content:first').html(marked(data.value));
             }
+            if (data.colour) {
+                changeCardColour(cardObj, data.colour)
+            }
+
+            break;
+
+        case 'pulsateCard':
+            pulsateCard(data.id);
             break;
 
         case 'initColumns':
@@ -129,6 +139,41 @@ function getMessage(m) {
 
         case 'updateColumns':
             initColumns(data);
+            break;
+
+        case 'initRows':
+            initRows(data);
+            break;
+
+        case 'createRow':
+            drawNewRow(data.id, data.text, data.y)
+            break;
+
+        case 'deleteRow':
+            $("#" + data.id).fadeOut(500,
+                function() {
+                    $(this).remove();
+                }
+            )
+            break;
+
+        case 'updateRowPos':
+            row = $("#" + data.id)
+            if (row != null) {
+                row.css('top', data.y + 'px');
+            }
+            break;
+
+        case 'updateRowText':
+            $("#" + data.id).children('.row-text').text(data.text);
+            break;
+
+        case 'moveEraser':
+            moveEraser($("#" + data.id), data.x);
+            break;
+
+        case 'moveMarker':
+            moveMarker($("#" + data.id), data.x);
             break;
 
         case 'changeTheme':
@@ -157,13 +202,8 @@ function getMessage(m) {
 
         case 'setBoardSize':
             resizeBoard(message.data);
-            break;
-
-        case 'editText':
-            var item = data.item;
-            var text = "";
-            if (data.text) { text = data.text; }
-            updateText(item, text);
+            adjustRows(message.data.width);
+            adjustEraserAndMarker(message.data.height);
             break;
 
         default:
@@ -171,71 +211,67 @@ function getMessage(m) {
             alert('unknown action: ' + JSON.stringify(message));
             break;
     }
-
-
 }
-
-function updateText (item, text) {
-    if (item == 'board-title' && text != '') {
-        $('#board-title').text(text);
-    }
-}
-
 
 $(document).bind('keyup', function(event) {
     keyTrap = event.which;
+
+    if (keyTrap == 17) { // ctrl
+        ctrlPressed = false;
+     }
 });
 
-function drawNewCard(id, text, x, y, rot, colour, type, sticker, animationspeed) {
-    //cards[id] = {id: id, text: text, x: x, y: y, rot: rot, colour: colour};
+$(document).bind('keydown', function(event) {
+    keyTrap = event.which;
 
-    var h = '';
+    if (keyTrap == 17) { // CTRL
+        ctrlPressed = true;
+    } else if (keyTrap == 46) { // DEL
+        deleteSelectedCards();
+    }
+});
 
-    if (type == 'card' || type == null) {
-        h = '<div id="' + id + '" class="card ' + colour +
-            ' draggable cardstack" style="-webkit-transform:rotate(' + rot +
-            'deg);\
-        ">\
-        <svg class="card-icon delete-card-icon" width="15" height="15"><use xlink:href="teenyicons/teenyicons-outline-sprite.svg#outline--x-circle" /></svg>\
-        <svg class="card-icon card-icon2 change-colour" data-colour="' + colour + '" width="15" height="15"><use xlink:href="teenyicons/teenyicons-outline-sprite.svg#outline--paintbrush" /></svg>\
-        <img class="card-image" src="images/' + colour + '-card.png">\
-        <div id="content:' + id +
-            '" class="content stickertarget droppable">' +
-            text + '</div><span class="filler"></span>\
-        </div>';
-    }
-    else if (type == 'sticky') {
-         h = '<div id="' + id + '" class="sticky ' + colour +
-         ' draggable cardstack" style="-webkit-transform:rotate(' + rot +
-         'deg);\
-        ">\
-        <svg class="card-icon delete-card-icon" width="15" height="15"><use xlink:href="teenyicons/teenyicons-outline-sprite.svg#outline--x-circle" /></svg>\
-        <img class="card-image" src="images/postit/p' + colour + '.png">\
-        <div id="content:' + id +
-            '" class="content stickertarget droppable">' +
-            text + '</div><span class="filler"></span>\
-        </div>';
-    }
+function drawNewCard(id, text, x, y, rot, colour, sticker, type) {
+	var img_src = null;
+	var style_content = null;
+
+	if (!type || type == 1) {
+	    img_src = colour + "-card.png";
+	    style_content = "";
+	    style_card_icon = " card-icon-default";
+	    style_card_change_color_icon = " card-change-color-icon-default";
+	    style_card_copy_icon = " card-copy-icon-default";
+	    style_filler = "";
+	} else if (type == 2) {
+	    img_src = colour + "-card-pi.png";
+	    style_content = " content-pi";
+	    style_card_icon = " card-icon-pi";
+	    style_card_change_color_icon = " card-change-color-icon-pi";
+	    style_card_copy_icon = " card-copy-icon-pi";
+	    style_filler = " filler-pi";
+	}
+
+    var h = '<div id="' + id + '" class="card ' +
+        ' draggable" style="-webkit-transform:rotate(' + rot +
+        'deg);\
+	">\
+	<img src="images/icons/token/Xion.png" class="card-icon' + style_card_icon + '" />\
+	<img src="images/icons/token/copy-card.png" class="card-copy-icon' + style_card_copy_icon + '" />\
+	<img src="images/icons/token/fill-colour.png" class="card-change-color-icon' + style_card_change_color_icon + '" />\
+	<img class="card-image" src="images/' + img_src + '">\
+	<div id="content:' + id + '" class="content' + style_content + ' stickertarget droppable" data-text="">' +
+        marked(text) + '</div><span class="filler' + style_filler + '"></span></div>';
 
     var card = $(h);
-    card.appendTo('#board');
 
-    //@TODO
-    //Draggable has a bug which prevents blur event
-    //http://bugs.jqueryui.com/ticket/4261
-    //So we have to blur all the cards and editable areas when
-    //we click on a card
-    //The following doesn't work so we will do the bug
-    //fix recommended in the above bug report
-    // card.click( function() {
-    // 	$(this).focus();
-    // } );
+    card.appendTo('#board');
+    $("#" + id).children('.content:first').attr('data-text', text);
 
     card.draggable({
         snap: false,
         snapTolerance: 5,
-        containment: [0, 0, 2000, 2000],
-        stack: ".cardstack",
+        containment: [0, 0, 3100, 3100],
+        stack: ".card",
         start: function(event, ui) {
             keyTrap = null;
         },
@@ -245,23 +281,13 @@ function drawNewCard(id, text, x, y, rot, colour, type, sticker, animationspeed)
                 return false;
             }
         },
-        handle: "div.content",
-        zIndex: 100
+		handle: "div.content"
     });
 
-    //After a drag:
+    // After a drag
     card.bind("dragstop", function(event, ui) {
         if (keyTrap == 27) {
             keyTrap = null;
-            return;
-        }
-
-        if ($(event.target).hasClass("stuck-sticker"))
-        {
-            //You're dragging a sticker on the card, not the card itself
-            //so do not move the card
-            //console.log(event);
-            if(event.offsetX > 20) console.log('delete!');
             return;
         }
 
@@ -296,8 +322,6 @@ function drawNewCard(id, text, x, y, rot, colour, type, sticker, animationspeed)
     });
 
     var speed = Math.floor(Math.random() * 1000);
-    if (typeof(animationspeed) != 'undefined') speed = animationspeed;
-
     var startPosition = $("#create-card").position();
 
     card.css('top', startPosition.top - card.height() * 0.5);
@@ -312,10 +336,14 @@ function drawNewCard(id, text, x, y, rot, colour, type, sticker, animationspeed)
         function() {
             $(this).addClass('hover');
             $(this).children('.card-icon').fadeIn(10);
+            $(this).children('.card-change-color-icon').fadeIn(10);
+            $(this).children('.card-copy-icon').fadeIn(10);
         },
         function() {
             $(this).removeClass('hover');
             $(this).children('.card-icon').fadeOut(150);
+            $(this).children('.card-change-color-icon').fadeOut(150);
+            $(this).children('.card-copy-icon').fadeOut(150);
         }
     );
 
@@ -328,41 +356,88 @@ function drawNewCard(id, text, x, y, rot, colour, type, sticker, animationspeed)
         }
     );
 
-    card.children('.delete-card-icon').click(
+    card.children('.card-change-color-icon').hover(
+        function() {
+            $(this).addClass('card-icon-hover');
+        },
+        function() {
+            $(this).removeClass('card-icon-hover');
+        }
+    );
+
+    card.children('.card-copy-icon').hover(
+        function() {
+            $(this).addClass('card-icon-hover');
+        },
+        function() {
+            $(this).removeClass('card-icon-hover');
+        }
+    );
+
+    card.children('.card-icon').click(
         function() {
             $("#" + id).remove();
             //notify server of delete
             sendAction('deleteCard', {
-                'id': id
+                id: id
             });
         }
     );
 
-    card.children('.change-colour').click(
+    card.children('.card-change-color-icon').click(
         function() {
-                rotateCardColor(id, $(this).data('colour'));
-            });
- 
-
-    card.children('.content').editable({
-        multiline: true,
-        saveDelay: 600,
-        save: function(content) {
-            onCardChange(id, content.target.innerText, null);
+            changeToNextCardColour(id);
         }
+    );
+
+    card.children('.card-copy-icon').click(
+        function() {
+            copyCard(id);
+        }
+    );
+
+    card.children('.content').editable(function(value, settings) {
+        $("#" + id).children('.content:first').attr('data-text', value);
+        onCardChange(id, value, null);
+        return (marked(value));
+    }, {
+        type: 'textarea',
+        data: function() {
+            return $("#" + id).children('.content:first').attr('data-text');
+        },
+        submit: 'OK',
+        style: 'inherit',
+        cssclass: 'card-edit-form',
+        placeholder: 'Double click to edit...',
+        onblur: 'submit',
+        event: 'dblclick'
     });
 
+    card.click(
+        function() {
+            if (!ctrlPressed) {
+                return;
+            }
+
+            var data = {
+                id: this.id
+            };
+
+            sendAction('pulsateCard', data);
+            pulsateCard(this.id);
+        }
+    );
+
     //add applicable sticker
-    if (sticker)
+    if (sticker !== null)
         addSticker(id, sticker);
 }
 
-
-function onCardChange(id, text, c) {
+function onCardChange(id, text, colour) {
     sendAction('editCard', {
         id: id,
         value: text,
-        colour: c
+        colour: colour
     });
 }
 
@@ -373,46 +448,140 @@ function moveCard(card, position) {
     }, 500);
 }
 
+function changeToNextCardColour(id) {
+    var cardObj = $('#' + id)
+    var cardImgSrc = cardObj.children('.card-image').attr("src");
+    var currentColour = null;
+    var i = 0;
+    for(i=0; i < cardColours.length;i++) {
+        var idx = cardImgSrc.indexOf(cardColours[i]);
+        if (idx != -1) {
+            currentColour = cardColours[i];
+            break;
+        }
+    }
+
+    newColour = i + 1 < cardColours.length ? cardColours[i + 1] : cardColours[0];
+
+    // replace image
+    var newImgSrc = cardImgSrc.replace(currentColour, newColour);
+    cardObj.children('.card-image').attr("src", newImgSrc);
+
+    onCardChange(id, null, newColour);
+}
+
+function changeCardColour(cardObj, colour) {
+    var cardImgSrc = cardObj.children('.card-image').attr("src");
+    var currentColour = null;
+    var i = 0;
+    for(i=0; i < cardColours.length;i++) {
+        var idx = cardImgSrc.indexOf(cardColours[i]);
+        if (idx != -1) {
+            currentColour = cardColours[i];
+            break;
+        }
+    }
+
+    // replace image
+    var newImgSrc = cardImgSrc.replace(currentColour, colour);
+    cardObj.children('.card-image').attr('src', newImgSrc);
+}
+
+function copyCard(id) {
+    var cardObj = $('#' + id);
+    var cardPosition = cardObj.position();
+    var cardText = cardObj.children('.content:first').attr('data-text');
+    var cardImgSrc = cardObj.children('.card-image').attr("src");
+    var cardColor = null;
+    var cardType = null;
+    var cardOffset = null;
+    var i = 0;
+    for(i = 0; i < cardColours.length;i++) {
+        var idx = cardImgSrc.indexOf(cardColours[i]);
+        if (idx != -1) {
+            cardColor = cardColours[i];
+
+            var idxSuffix = cardImgSrc.indexOf('-pi');
+            if (idxSuffix == -1) {
+                cardType = 1;
+
+                if (currentTheme == "smallcards") {
+                    cardOffset = 90;
+                } else if (currentTheme == "mediumcards") {
+                    cardOffset = 180;
+                } else if (currentTheme == "bigcards") {
+                    cardOffset = 230;
+                }
+            } else {
+                cardType = 2;
+
+                if (currentTheme == "smallcards") {
+                    cardOffset = 110;
+                } else if (currentTheme == "mediumcards") {
+                    cardOffset = 220;
+                } else if (currentTheme == "bigcards") {
+                    cardOffset = 280;
+                }
+            }
+
+            break;
+        }
+    }
+
+    createCardAtPos(cardPosition.left + cardOffset, cardPosition.top, cardColor, cardText, cardType);
+}
+
+function moveEraser(eraser, x) {
+    eraser.animate({
+        left: x + "px",
+        top: eraser.position.top + "px"
+    }, 500);
+}
+
+function moveMarker(marker, x) {
+    marker.animate({
+        left: x + "px",
+        top: marker.position.top + "px"
+    }, 500);
+}
+
+function adjustEraserAndMarker(boardHeight) {
+    h = boardHeight == null ? $('#board').height() : boardHeight;
+
+    eraser = $('#eraser');
+    eraser.css('top', (h - eraser.height()) + 'px');
+
+    marker = $('#marker');
+    marker.css('top', (h - marker.height()) + 'px');
+}
+
 function addSticker(cardId, stickerId) {
-
     stickerContainer = $('#' + cardId + ' .filler');
-
-    if (stickerContainer.length == 0) return;
 
     if (stickerId === "nosticker") {
         stickerContainer.html("");
         return;
     }
 
-
     if (Array.isArray(stickerId)) {
         for (var i in stickerId) {
             stickerContainer.prepend('<img src="images/stickers/' + stickerId[i] +
-                '.png" class="stuck-sticker">');
+                '.png">');
         }
     } else {
         if (stickerContainer.html().indexOf(stickerId) < 0)
             stickerContainer.prepend('<img src="images/stickers/' + stickerId +
-                '.png" class="stuck-sticker">');
+                '.png">');
     }
-
-    $(".stuck-sticker").draggable({
-        revert: true,
-        zIndex: 1000,
-        cursor: "pointer",
-    });
-
 }
-
 
 //----------------------------------
 // cards
 //----------------------------------
 function createCard(id, text, x, y, rot, colour, type) {
-    drawNewCard(id, text, x, y, rot, colour, type, null, null);
+    drawNewCard(id, text, x, y, rot, colour, null, type);
 
     var action = "createCard";
-
     var data = {
         id: id,
         text: text,
@@ -424,42 +593,60 @@ function createCard(id, text, x, y, rot, colour, type) {
     };
 
     sendAction(action, data);
-
 }
-
-var cardColours = ['yellow', 'green', 'blue', 'white'];
-var stickyColours = ['1', '2', '3'];
-
 
 function randomCardColour() {
-
     var i = Math.floor(Math.random() * cardColours.length);
-
-    return cardColours[i];
+    return colours[i];
 }
 
-function randomStickyColour() {
+function createCardAtRandomPos(color, type) {
+    var rotation = Math.random() * 10 - 5; //add a bit of random rotation (+/- 10deg)
+    var id = Math.round(Math.random() * 99999999); //is this big enough to assure uniqueness?
+    var offsetX = Math.round(Math.random() * 50)
+    var offsetY = Math.round(Math.random() * 20)
 
-    var i = Math.floor(Math.random() * stickyColours.length);
-
-    return stickyColours[i];
+    createCard(
+        'card' + id,
+        '',
+        60 + offsetX,
+        $('div.board-outline').height() + 30 + offsetY,
+        rotation,
+        color,
+        type);
 }
 
+function createCardAtDlgPos(color, type) {
+    var rotation = Math.random() * 10 - 5; //add a bit of random rotation (+/- 10deg)
+    var id = Math.round(Math.random() * 99999999); //is this big enough to assure uniqueness?
 
-function rotateCardColor(id, currentColour) {
-    var index = cardColours.indexOf(currentColour.toString());
-    //new position:
-    var newIndex = index + 1;
-    newIndex = newIndex % (stickyColours.length + 1);
+    var dlg = $('#buttons-dialog');
 
-    $('#'+id).children('.card-image').attr("src", 'images/' + cardColours[newIndex] + '-card.png');
-    $('#'+id).children('.change-colour').data('colour',cardColours[newIndex]);
+    createCard(
+        'card' + id,
+        '',
+        dlg.position().left + 60,
+        dlg.position().top,
+        rotation,
+        color,
+        type);
 
-    //var trueId = id.substr(4); // remove "card" from start of id // no don't do this, server wants "card" in front
-    onCardChange(id, null, cardColours[newIndex]);
-
+    dlg.css('visibility', 'hidden');
 }
 
+function createCardAtPos(x, y, color, text, type) {
+    var rotation = Math.random() * 10 - 5; //add a bit of random rotation (+/- 10deg)
+    var id = Math.round(Math.random() * 99999999); //is this big enough to assure uniqueness?
+
+    createCard(
+        'card' + id,
+        text,
+        x,
+        y,
+        rotation,
+        color,
+        type);
+}
 
 function initCards(cardArray) {
     //first delete any cards that exist
@@ -477,9 +664,8 @@ function initCards(cardArray) {
             card.y,
             card.rot,
             card.colour,
-            card.type,
             card.sticker,
-            0,
+            card.type
         );
     }
 
@@ -487,41 +673,49 @@ function initCards(cardArray) {
     unblockUI();
 }
 
+function pulsateCard(id) {
+    $("#" + id).effect("pulsate", { times: 3 }, 2000);
+}
 
 //----------------------------------
-// cols
+// COLUMNS
 //----------------------------------
 
 function drawNewColumn(columnName) {
     var cls = "col";
-    if (totalcolumns === 0) {
+    if (columnsCount === 0) {
         cls = "col first";
     }
 
     $('#icon-col').before('<td class="' + cls +
-        '" width="10%" style="display:none"><h2 id="col-' + (totalcolumns + 1) +
-        '" class="editable column-editable">' + columnName + '</h2></td>');
+        '" width="10%" style="display:none"><h2 id="col-' + (columnsCount + 1) +
+        '" class="editable">' + columnName + '</h2></td>');
 
-    $('.editable').editable({
-        multiline: false,
-        save: function(content) {
-            onColumnChange(this.id, content.target.innerText);
-        }
-    });    
+    $('.editable').editable(function(value, settings) {
+        onColumnChange(this.id, value);
+        return (value);
+    }, {
+        style: 'inherit',
+        cssclass: 'card-edit-form',
+        type: 'textarea',
+        placeholder: 'New',
+        onblur: 'submit',
+        width: '',
+        height: '',
+        xindicator: '<img src="images/ajax-loader.gif">',
+        event: 'dblclick'
+    });
 
     $('.col:last').fadeIn(1500);
 
-    totalcolumns++;
+    columnsCount++;
 }
 
 function onColumnChange(id, text) {
     var names = Array();
 
-    //console.log(id + " " + text );
-
     //Get the names of all the columns right from the DOM
     $('.col').each(function() {
-
         //get ID of current column we are traversing over
         var thisID = $(this).children("h2").attr('id');
 
@@ -530,14 +724,13 @@ function onColumnChange(id, text) {
         } else {
             names.push($(this).text());
         }
-
     });
 
     updateColumns(names);
 }
 
 function displayRemoveColumn() {
-    if (totalcolumns <= 0) return false;
+    if (columnsCount <= 0) return false;
 
     $('.col:last').fadeOut(150,
         function() {
@@ -545,30 +738,32 @@ function displayRemoveColumn() {
         }
     );
 
-    totalcolumns--;
+    columnsCount--;
 }
 
 function createColumn(name) {
-    if (totalcolumns >= 8) return false;
+    if (columnsCount >= 8) {
+        return false;
+    }
 
     drawNewColumn(name);
     columns.push(name);
 
     var action = "updateColumns";
-
     var data = columns;
 
     sendAction(action, data);
 }
 
 function deleteColumn() {
-    if (totalcolumns <= 0) return false;
+    if (columnsCount <= 0) {
+        return false;
+    }
 
     displayRemoveColumn();
     columns.pop();
 
     var action = "updateColumns";
-
     var data = columns;
 
     sendAction(action, data);
@@ -578,7 +773,6 @@ function updateColumns(c) {
     columns = c;
 
     var action = "updateColumns";
-
     var data = columns;
 
     sendAction(action, data);
@@ -589,39 +783,170 @@ function deleteColumns(next) {
     $('.col').fadeOut('slow', next());
 }
 
+//----------------------------------
+// ROWS
+//----------------------------------
+
+function drawNewRow(id, text, y) {
+    var h = '<div id="' + id + '" class="draggable row-line">' +
+    '<span id="row-text-' + id + '" class="editable row-text" style="padding-left: 25px;">' + text + '</span>' +
+	'<img src="images/icons/token/Xion.png" class="row-icon" />' +
+	'</div>'
+
+    var row = $(h);
+    w = $('#board').width()
+    row.appendTo('#board');
+    row.css('width', w + 'px');
+    row.css('top', y + 'px');
+    row.css('left', 0 + 'px');
+
+    row.draggable(
+        {
+           axis: "y",
+           containment: "#board",
+           stop: function(event, ui) {
+               var newY = ui.position.top;
+               updateRowPos(id, newY);
+           }
+        }
+    )
+
+    row.children('.editable').editable(function(value, settings) {
+        updateRowText(id, value);
+        return (value);
+    }, {
+        type: 'textarea',
+        style: 'inherit',
+        cssclass: 'card-edit-form',
+        placeholder: 'Double Click to Edit.',
+        width: '200px',
+        height: '',
+        onblur: 'submit',
+        event: 'dblclick'
+    });
+
+    row.hover(
+        function() {
+            $(this).addClass('hover');
+            $(this).children('.row-icon').fadeIn(10);
+        },
+        function() {
+            $(this).removeClass('hover');
+            $(this).children('.row-icon').fadeOut(150);
+        }
+    );
+
+    row.children('.row-icon').hover(
+        function() {
+            $(this).addClass('row-icon-hover');
+        },
+        function() {
+            $(this).removeClass('row-icon-hover');
+        }
+    );
+
+    row.children('.row-icon').click(
+        function() {
+            if (confirm('Do you really want to delete the row?')) {
+                deleteRow(id);
+                $("#" + id).remove();
+            }
+        }
+    );
+}
+
+function createNewRow() {
+    var id = 'row' + Math.round(Math.random() * 99999999);
+    createRow(id, 'Sample text', 200);
+}
+
+function createRow(id, text, y) {
+    drawNewRow(id, text, y);
+
+    var action = "createRow";
+    var data = {
+        id: id,
+        text: text,
+        y: y
+    };
+
+    sendAction(action, data);
+}
+
+function deleteRow(id) {
+    var action = "deleteRow";
+    var data = {
+        id: id
+    };
+
+    sendAction(action, data);
+}
+
+function adjustRows(newWidth) {
+    w = newWidth == null ? $('#board').width() : newWidth;
+
+    $('.row-line').each(function() {
+        $(this).css('width', w + 'px');
+    });
+}
+
+function updateRowText(id, text) {
+    var action = "updateRowText";
+    var data = {
+        id: id,
+        text: text,
+    };
+
+    sendAction(action, data);
+}
+
+function updateRowPos(id, y) {
+    var action = "updateRowPos";
+    var data = {
+        id: id,
+        y: y
+    };
+
+    sendAction(action, data);
+}
+
 function initColumns(columnArray) {
-    totalcolumns = 0;
+    columnsCount = 0;
     columns = columnArray;
 
     $('.col').remove();
 
     for (var i in columnArray) {
         column = columnArray[i];
-
-        drawNewColumn(
-            column
-        );
+        drawNewColumn(column);
     }
 }
 
+function initRows(rowArray) {
+    $('.row-line').remove();
+
+    for (var i in rowArray) {
+        row = rowArray[i];
+        drawNewRow(row.id, row.text, row.y);
+    }
+
+    adjustRows(null);
+}
 
 function changeThemeTo(theme) {
     currentTheme = theme;
     $("link[title=cardsize]").attr("href", "css/" + theme + ".css");
 }
 
-
 //////////////////////////////////////////////////////////
 ////////// NAMES STUFF ///////////////////////////////////
 //////////////////////////////////////////////////////////
 
 
-
 function setCookie(c_name, value, exdays) {
     var exdate = new Date();
     exdate.setDate(exdate.getDate() + exdays);
-    var c_value = escape(value) + ((exdays === null) ? "" : "; expires=" +
-        exdate.toUTCString());
+    var c_value = escape(value) + ((exdays === null) ? "" : "; expires=" + exdate.toUTCString());
     document.cookie = c_name + "=" + c_value;
 }
 
@@ -637,16 +962,13 @@ function getCookie(c_name) {
     }
 }
 
-
 function setName(name) {
     sendAction('setUserName', name);
-
     setCookie('scrumscrum-username', name, 365);
 }
 
 function displayInitialUsers(users) {
     for (var i in users) {
-        //console.log(users);
         displayUserJoined(users[i].sid, users[i].user_name);
     }
 }
@@ -657,7 +979,6 @@ function displayUserJoined(sid, user_name) {
         name = user_name;
     else
         name = sid.substring(0, 5);
-
 
     $('#names-ul').append('<li id="user-' + sid + '">' + name + '</li>');
 }
@@ -676,7 +997,6 @@ function displayUserLeft(sid) {
     });
 }
 
-
 function updateName(sid, name) {
     var id = '#user-' + sid.toString();
 
@@ -686,34 +1006,29 @@ function updateName(sid, name) {
 //////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////
 
-function boardResizeHappened(event, newSize) {
-    sendAction('setBoardSize', newSize);
+function boardResizeHappened(event, ui) {
+    var newsize = ui.size;
+
+    sendAction('setBoardSize', newsize);
 }
 
 function resizeBoard(size) {
-    // $(".board-outline").animate({
-    //     height: size.height,
-    //     width: size.width
-    // });
-
-    $(".board-outline").height(size.height);
-    $(".board-outline").width(size.width);
-
-    $('.board-outline').trigger('initboard');
-
-
+    $(".board-outline").animate({
+        height: size.height,
+        width: size.width
+    });
 }
 //////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////
 
 function calcCardOffset() {
     var offsets = {};
-    $(".card,.sticky").each(function() {
+    $(".card").each(function() {
         var card = $(this);
         $(".col").each(function(i) {
             var col = $(this);
             if (col.offset().left + col.outerWidth() > card.offset().left +
-                card.outerWidth() || i === $(".col").length - 1) {
+                card.outerWidth() || i === $(".col").size() - 1) {
                 offsets[card.attr('id')] = {
                     col: col,
                     x: ((card.offset().left - col.offset().left) / col.outerWidth())
@@ -725,145 +1040,269 @@ function calcCardOffset() {
     return offsets;
 }
 
-
 //moves cards with a resize of the Board
 //doSync is false if you don't want to synchronize
 //with all the other users who are in this room
 function adjustCard(offsets, doSync) {
-    $(".card,.sticky").each(function() {
+    $(".card").each(function() {
         var card = $(this);
         var offset = offsets[this.id];
         if (offset) {
             var data = {
                 id: this.id,
                 position: {
-                    left: offset.col.position().left + (offset.x * offset.col
-                        .outerWidth()),
+                    left: offset.col.position().left + (offset.x * offset.col.outerWidth()),
                     top: parseInt(card.css('top').slice(0, -2))
                 },
                 oldposition: {
                     left: parseInt(card.css('left').slice(0, -2)),
                     top: parseInt(card.css('top').slice(0, -2))
                 }
-            }; //use .css() instead of .position() because css' rotate
-            //console.log(data);
+            };
             if (!doSync) {
                 card.css('left', data.position.left);
                 card.css('top', data.position.top);
             } else {
-                //note that in this case, data.oldposition isn't accurate since
-                //many moves have happened since the last sync
-                //but that's okay becuase oldPosition isn't used right now
                 moveCard(card, data.position);
                 sendAction('moveCard', data);
             }
-
         }
     });
 }
 
-//adjusts the marker and eraser after a board resize
-function adjustMarker(originalSize, newSize) {
-    //remove any y positioning. Makes a harsh jump but works as a hack
-    $("#marker,#eraser").css('top','');
-    // console.log( "markerleft: " + $('#marker').css('left') );
-    // console.log( "size: " + newSize.width);
-     
-    //if either has gone over the edge of the board, just bring it in
-    if ( parseFloat($('#marker').css('left')) > newSize.width - 100)
-    {
-        $('#marker').css('left', newSize.width-100 + 'px' );
-    }
-    if ( parseFloat($('#eraser').css('left')) > newSize.width - 100)
-    {
-        $('#eraser').css('left', newSize.width-100 + 'px' );
-    }
+function reCalcSelectBox() {
+    var x3 = Math.min(selectBoxX1, selectBoxX2);
+    var x4 = Math.max(selectBoxX1, selectBoxX2);
+    var y3 = Math.min(selectBoxY1, selectBoxY2);
+    var y4 = Math.max(selectBoxY1, selectBoxY2);
+
+    var selectBox = $('#select-box')
+    selectBox.css('left', x3 + 'px');
+    selectBox.css('top', y3 + 'px');
+    selectBox.css('width', x4 - x3 + 'px');
+    selectBox.css('height', y4 - y3 + 'px');
 }
+
+function getXY(evt, element) {
+    var scrollTop = document.documentElement.scrollTop ?
+        document.documentElement.scrollTop :
+        document.body.scrollTop;
+    var scrollLeft = document.documentElement.scrollLeft ?
+        document.documentElement.scrollLeft :
+        document.body.scrollLeft;
+    var parentOffset = element.offset();
+    var x = evt.clientX - parentOffset.left + scrollLeft;
+    var y = evt.clientY - parentOffset.top + scrollTop;
+
+    return {x:x, y:y};
+}
+
+function selectCards() {
+    $(".card").each(function() {
+        var card = $(this);
+        var cardX1 = card.position().left + 25
+        var cardY1 = card.position().top + 25
+        var cardX2 = cardX1 + card.width() - 25
+        var cardY2 = cardY1 + card.height() - 25
+        var leftPos = Math.min(selectBoxX1, selectBoxX2);
+        var topPos = Math.min(selectBoxY1, selectBoxY2);
+        var rightPos = Math.max(selectBoxX1, selectBoxX2);
+        var bottomPos = Math.max(selectBoxY1, selectBoxY2);
+
+        if (cardX1 >= leftPos && cardX2 <= rightPos && cardY1 >= topPos && cardY2 <= bottomPos) {
+            card.addClass('card-marked');
+        }
+    });
+}
+
+function deselectCards() {
+    $(".card").each(function() {
+        var card = $(this);
+        card.removeClass('card-marked')
+    });
+}
+
+function deleteSelectedCards() {
+    $(".card").each(function() {
+        var card = $(this);
+
+        if (card.hasClass('card-marked')) {
+            cardId = card.attr('id')
+            $("#" + cardId).remove();
+            // notify server of delete
+            sendAction('deleteCard', {
+                id: cardId
+            });
+        }
+    });
+}
+
 
 //////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////
 
 $(function() {
-
-
-	//disable image dragging
-	//window.ondragstart = function() { return false; };
-
-
     if (boardInitialized === false)
         blockUI('<img src="images/ajax-loader.gif" width=43 height=11/>');
 
-    //setTimeout($.unblockUI, 2000);
-
-
     $("#create-card")
         .click(function() {
-            var rotation = Math.random() * 10 - 5; //add a bit of random rotation (+/- 5deg)
-            uniqueID = Math.round(Math.random() * 99999999); //is this big enough to assure uniqueness?
-            //alert(uniqueID);
-            createCard(
-                'card' + uniqueID,
-                '',
-                58, $('div.board-outline').height(), // hack - not a great way to get the new card coordinates, but most consistant ATM
-                rotation,
-                randomCardColour(),
-                "card");
+            createCardAtRandomPos(randomCardColour(), 1)
         });
-    
-    $("#create-sticky")
+
+    $("#create-card-yellow")
         .click(function() {
-            var rotation = Math.random() * 4 - 2; //add a bit of random rotation (+/- 2deg)
-            uniqueID = Math.round(Math.random() * 99999999); //is this big enough to assure uniqueness?
-            //alert(uniqueID);
-            createCard(
-                'card' + uniqueID,
-                '',
-                58, $('div.board-outline').height(), // hack - not a great way to get the new card coordinates, but most consistant ATM
-                rotation,
-                randomStickyColour(),
-                "sticky");
+            createCardAtRandomPos('yellow', 1)
         });
 
+    $("#create-card-green")
+        .click(function() {
+            createCardAtRandomPos('green', 1)
+        });
 
+    $("#create-card-blue")
+        .click(function() {
+            createCardAtRandomPos('blue', 1)
+        });
+
+    $("#create-card-white")
+        .click(function() {
+            createCardAtRandomPos('white', 1)
+        });
+
+    $("#create-card-orange")
+        .click(function() {
+            createCardAtRandomPos('orange', 1)
+        });
+
+    $("#create-card-purple")
+        .click(function() {
+            createCardAtRandomPos('purple', 1)
+        });
+
+    $("#create-card-red")
+        .click(function() {
+            createCardAtRandomPos('red', 1)
+        });
+
+    $("#create-card-pi-white")
+        .click(function() {
+            createCardAtRandomPos('white', 2)
+        });
+
+    $("#create-card-pi-yellow")
+        .click(function() {
+            createCardAtRandomPos('yellow', 2)
+        });
+
+    $("#create-card-pi-green")
+        .click(function() {
+            createCardAtRandomPos('green', 2)
+        });
+
+    $("#create-card-pi-blue")
+        .click(function() {
+            createCardAtRandomPos('blue', 2)
+        });
+
+    $("#create-card-pi-orange")
+        .click(function() {
+            createCardAtRandomPos('orange', 2)
+        });
+
+    $("#create-card-pi-purple")
+        .click(function() {
+            createCardAtRandomPos('purple', 2)
+        });
+
+    $("#create-card-pi-red")
+        .click(function() {
+            createCardAtRandomPos('red', 2)
+        });
+
+    $("#create-card-yellow-dlg")
+        .click(function() {
+            createCardAtDlgPos('yellow', 1)
+        });
+
+    $("#create-card-red-dlg")
+        .click(function() {
+            createCardAtDlgPos('red', 1)
+        });
+
+    $("#create-card-green-dlg")
+        .click(function() {
+            createCardAtDlgPos('green', 1)
+        });
+
+    $("#create-card-blue-dlg")
+        .click(function() {
+            createCardAtDlgPos('blue', 1)
+        });
+
+    $("#create-card-white-dlg")
+        .click(function() {
+            createCardAtDlgPos('white', 1)
+        });
+
+    $("#create-card-orange-dlg")
+        .click(function() {
+            createCardAtDlgPos('orange', 1)
+        });
+
+    $("#create-card-purple-dlg")
+        .click(function() {
+            createCardAtDlgPos('purple', 1)
+        });
+
+    $("#create-card-pi-yellow-dlg")
+        .click(function() {
+            createCardAtDlgPos('yellow', 2)
+        });
+
+    $("#create-card-pi-red-dlg")
+        .click(function() {
+            createCardAtDlgPos('red', 2)
+        });
+
+    $("#create-card-pi-green-dlg")
+        .click(function() {
+            createCardAtDlgPos('green', 2)
+        });
+
+    $("#create-card-pi-blue-dlg")
+        .click(function() {
+            createCardAtDlgPos('blue', 2)
+        });
+
+    $("#create-card-pi-white-dlg")
+        .click(function() {
+            createCardAtDlgPos('white', 2)
+        });
+
+    $("#create-card-pi-orange-dlg")
+        .click(function() {
+            createCardAtDlgPos('orange', 2)
+        });
+
+    $("#create-card-pi-purple-dlg")
+        .click(function() {
+            createCardAtDlgPos('purple', 2)
+        });
 
     // Style changer
     $("#smallify").click(function() {
-
-        var newBoardSize = {};
-        var oldWidth = $(".board-outline").width();
-        var oldHeight = $(".board-outline").height();
-
-        var offsets = calcCardOffset();
-    
-        if (currentTheme == "bigcards") {
-            changeThemeTo('smallcards');
-            newBoardSize.height = oldHeight / 1.5;
-            newBoardSize.width = oldWidth / 1.5;
-        } else if (currentTheme == "smallcards") {
+        if (currentTheme == "smallcards") {
+            changeThemeTo('mediumcards');
+        } else if (currentTheme == "mediumcards") {
             changeThemeTo('bigcards');
-            newBoardSize.height = oldHeight * 1.5;
-            newBoardSize.width = oldWidth * 1.5; 
+        } else {
+            changeThemeTo('smallcards');
         }
-        /*else if (currentTheme == "nocards")
-		{
-			currentTheme = "bigcards";
-			$("link[title=cardsize]").attr("href", "css/bigcards.css");
-        }*/
-    
-        resizeBoard(newBoardSize);
-        boardResizeHappened(null, newBoardSize);
-        adjustCard(offsets, true);
-
 
         sendAction('changeTheme', currentTheme);
-
-
-
-
         return false;
     });
-
-
 
     $('#icon-col').hover(
         function() {
@@ -876,6 +1315,11 @@ $(function() {
 
     $('#add-col').click(
         function() {
+            cardCount = $(".card").size();
+            if (cardCount > 0 && !confirm('Do you really want to add a column?')) {
+                return false;
+            }
+
             createColumn('New');
             return false;
         }
@@ -883,25 +1327,24 @@ $(function() {
 
     $('#delete-col').click(
         function() {
+            cardCount = $(".card").size();
+            if (cardCount > 0 && !confirm('Do you really want to delete the column?')) {
+                return false;
+            }
+
             deleteColumn();
             return false;
         }
     );
 
-
-    // $('#cog-button').click( function(){
-    // 	$('#config-dropdown').fadeToggle();
-    // } );
-
-    // $('#config-dropdown').hover(
-    // 	function(){ /*$('#config-dropdown').fadeIn()*/ },
-    // 	function(){ $('#config-dropdown').fadeOut() }
-    // );
-    //
+    $('#add-row').click(
+        function() {
+            createNewRow();
+            return false;
+        }
+    );
 
     var user_name = getCookie('scrumscrum-username');
-
-
 
     $("#yourname-input").focus(function() {
         if ($(this).val() == 'unknown') {
@@ -909,7 +1352,6 @@ $(function() {
         }
 
         $(this).addClass('focused');
-
     });
 
     $("#yourname-input").blur(function() {
@@ -923,7 +1365,6 @@ $(function() {
 
     $("#yourname-input").val(user_name);
     $("#yourname-input").blur();
-
     $("#yourname-li").hide();
 
     $("#yourname-input").keypress(function(e) {
@@ -933,20 +1374,17 @@ $(function() {
         }
     });
 
-
-
     $(".sticker").draggable({
         revert: true,
         zIndex: 1000
     });
-
 
     $(".board-outline").resizable({
         ghost: false,
         minWidth: 700,
         minHeight: 400,
         maxWidth: 3200,
-        maxHeight: 1800,
+        maxHeight: 3200,
     });
 
     //A new scope for precalculating
@@ -958,62 +1396,140 @@ $(function() {
         });
         $(".board-outline").bind("resize", function(event, ui) {
             adjustCard(offsets, false);
+            adjustEraserAndMarker(null);
         });
         $(".board-outline").bind("resizestop", function(event, ui) {
-            boardResizeHappened(event, ui.size);
+            boardResizeHappened(event, ui);
             adjustCard(offsets, true);
-            adjustMarker(ui.originalSize, ui.size);
+            adjustRows(ui.position.width);
+            adjustEraserAndMarker(ui.position.height);
         });
     })();
 
-
-
-    $('#marker').draggable({
+    marker = $('#marker')
+    marker.draggable({
         axis: 'x',
-        containment: 'parent'
-    });
-
-    $('#eraser').draggable({
-        axis: 'x',
-        containment: 'parent'
-    });
-
-
-    
-    $( "#menu" ).menu();
-    $('#configmenu').click(function() {
-        $('#menu').show();
-    });
-    $(document.body).click(function() {
-        $('#menu').hide();
-    });
-    $("#menu,#configmenu").click( function(e) {
-        e.stopPropagation(); // this stops the event from bubbling up to the body
-    });
-    
-    $(".ceditable").editable({
-        multiline: false,
-        saveDelay: 600, //wait 600ms before calling "save" callback
-        autoselect: false, //select content automatically when editing starts
-        save: function(content) {
-            //here you can save content to your MVC framework's model or send directly to server...
-            //console.log(content);
-
-            var action = "editText";
-
-            var data = {
-                item: 'board-title',
-                text: content.target.innerText
-            };
-            
-            if (content.target.innerText.length > 0)
-                sendAction(action, data);
+        containment: 'parent',
+        start: function(event, ui) {
+            keyTrap = null;
         },
-        validate: function(content) {
-            //here you can validate content using RegExp or any other JS code to return false for invalid input
-            return content !== "";
+        drag: function(event, ui) {
+            if (keyTrap == 27) {
+                ui.helper.css(ui.originalPosition);
+                return false;
+            }
         }
     });
 
-    
+    // After a drag
+    marker.bind("dragstop", function(event, ui) {
+        if (keyTrap == 27) {
+            keyTrap = null;
+            return;
+        }
+
+        var data = {
+            id: this.id,
+            x: ui.position.left
+        };
+
+        sendAction('moveMarker', data);
+    });
+
+    eraser = $('#eraser');
+    eraser.draggable({
+        axis: 'x',
+        containment: 'parent',
+        start: function(event, ui) {
+            keyTrap = null;
+        },
+        drag: function(event, ui) {
+            if (keyTrap == 27) {
+                ui.helper.css(ui.originalPosition);
+                return false;
+            }
+        }
+    });
+
+    // After a drag
+    eraser.bind("dragstop", function(event, ui) {
+        if (keyTrap == 27) {
+            keyTrap = null;
+            return;
+        }
+
+        var data = {
+            id: this.id,
+            x: ui.position.left
+        };
+
+        sendAction('moveEraser', data);
+    });
+
+    board = $('#board')
+    selectBox = $('#select-box')
+    buttonsDialog = $('#buttons-dialog');
+
+    // Handle show select box for cards or buttons dialog
+    board.mousedown(function(event) {
+        deselectCards();
+
+        // ignore clicking on a card
+        var isColumn = $(event.target).hasClass('col')
+        var isIconColumn = event.target.id == 'icon-col'
+        if (!isIconColumn && !isColumn) {
+            return;
+        }
+
+        // if clicking outsize of dialog, hide it
+        if (buttonsDialog.css('visibility') == 'visible') {
+            buttonsDialog.css('visibility', 'hidden');
+        }
+
+        if (ctrlPressed) {
+            // show create card dialog
+            var top = event.pageY - 50;
+            var left = event.pageX - 20;
+            buttonsDialog.css({top: top + 'px', left: left + 'px', position: 'relative'});
+            buttonsDialog.css('visibility', 'visible');
+            ctrlPressed = false;
+            return;
+        } else {
+            var pos = getXY(event, board);
+            selectBoxX1 = pos.x;
+            selectBoxY1 = pos.y;
+            selectBoxX2 = pos.x;
+            selectBoxY2 = pos.y;
+            isSelectBoxActive = true;
+
+            reCalcSelectBox();
+        }
+    });
+
+    board.mousemove(function(event) {
+        if (!isSelectBoxActive) {
+            return;
+        }
+
+        // show select box if not visible
+        if (selectBox.css('visibility') != 'visible') {
+            selectBox.css('visibility', 'visible');
+        }
+
+        var pos = getXY(event, board)
+        selectBoxX2 = pos.x;
+        selectBoxY2 = pos.y;
+
+        reCalcSelectBox();
+    });
+
+    $(document).mouseup(function(event) {
+        if (!isSelectBoxActive) {
+            return;
+        }
+
+         selectBox.css('visibility', 'hidden');
+         isSelectBoxActive = false;
+         selectCards();
+    });
 });

@@ -1,9 +1,32 @@
-scrumblr
+scrumblr, v. 0.12.0
 ========
 
 what is it
 ----------
 [scrumblr](http://scrumblr.ca) is a web-based simulation of a physical agile kanban board that supports real-time collaboration. it is built using node.js, websockets (using socket.io), CSS3, and jquery. i hope you like it.
+
+This fork contains useful extensions and fixes of this simple and great tool used for my SCRUM stand-ups.
+- horizontal separators
+- seven colors of cards
+- create card button for each color
+- middle-sized cards
+- visible star stickers
+- Redis/MongoDB fixes
+- mark-down syntax on cards - v. 0.5.0
+- movable eraser and marker - v. 0.6.0
+- enable to pulsate a card for a while to draw attention (press Ctrl and click on a card) - v. 0.7.0
+- show a dialog to select a color and create a new card anywhere on the board. Useful for big boards
+  (press Ctrl and click on the board) - v. 0.8.0
+- fix to the card dialog - v. 0.8.1
+- seven new colors of Postit-like cards, so 14 cards in 3 sizes are available now - v. 0.9.0
+- upgrade of socket.io library (trying to solve time-out issues), extend max. board dimensions - v. 0.9.1
+- rotate card colours on button click - v. 0.10
+- minor refactoring: use only fonts from local server - v. 0.11
+- select multiple cards using mouse (click on board and select area with cards) and then press DELETE to remove them - v. 0.11
+- clone a card using a new icon button on a card - v. 0.12
+- ...
+
+![Extensions and fixes](scrumblr_extensions_2020.png)
 
 ![Wellca Board](http://scrumblr.ca/images/screenshot.png)
 
@@ -27,7 +50,7 @@ if you are a developer, please fork and submit changes/fixes.
 browser support
 ---------------
 
-scrumblr works on up to date chrome browsers. tested mainly on chrome for osx.
+scrumblr works on up to date chrome and firefox browsers. enable websockets for optimal performance. tested mainly on chrome for osx. this was not designed for browser support. use chrome for this app.
 
 design philosophy
 -----------------
@@ -39,14 +62,17 @@ my goal was to avoid buttons and ui (almost everything is edit in place or dragg
 how to install and run on your own computer (linux/osx)
 -------------------------------------------------------
 
-- [install redis](http://redis.io/download) (last tested on v6.0.9)
-- [install node.js](http://nodejs.org/) (last tested on v13.11.0)
-- [install npm](https://www.npmjs.com/get-npm)
-- cd to the scrumblr directory; you should see server.js and other files.
+- [install redis](http://redis.io/download) (last tested on v2.8.4)
+- [install node.js](http://nodejs.org/) (last tested on v12.18.4)
+- install npm (if you're running node.js (last tested on 6.14.6)
+- cd to the scrumblr directory; you should see server.js and config.js and other files.
 - run `npm install`
-- run redis `redis-server` (this will run forever, so open a new terminal for the next steps, or learn how to run redis as a daemon)
-- run scrumblr `node server.js --server:port=80` where "80" is the port you want scrumblr to run on. it defaults to 8080 
-- open a browser to `http://<server>:<port>` where `<server>` is your server's url or IP address, and `<port>` is the port you chose in the previous step. e.g. `http://yourwebserver:8080/
+- run Redis or MongoDB database engine
+- run scrumblr using `node server.js --port 80` where "80" is the port you have opened in your firewall and want scrumblr to run on (with Redis running on 127.0.0.1:6379).
+- optionally you can choose MongoDB or Redis instance using `node server.js --port 80 --redis DB_HOST:6379` or `node server.js --port 80 --mongodb DB_HOST:27017`
+- open a browser to `http://<server>:<port>` where `<server>` is your server's url or IP address, and `<port>` is the port you chose in the previous step.
+- consider running the service using `pm2` tool (https://pm2.keymetrics.io/)
+- Dockerfile included for running using Swarm
 
 license
 -------

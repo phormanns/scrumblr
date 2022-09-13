@@ -1,10 +1,10 @@
 .card {
-	width: 290px;
-	height: 184px;
+	width: 230px;
+	height: 152px;
 	xpadding: 5px; float: left;
 	xmargin: 0 10px 10px 0;
 	font-size: .9em;
-    overflow: hidden;
+	overflow: hidden;
 	position: absolute;
 	z-index: 10;
 	top: 460px;
@@ -13,27 +13,27 @@
 }
 
 .card-icon-default {
-    top: 15px; left: 82%;
+    top: 12px; left: 81%;
 }
 
 .card-icon-pi {
-    top: 5px; left: 92%;
+    top: 5px; left: 90%;
 }
 
 .card-change-color-icon-default {
-    top: 115px; left: 80%;
+    top: 90px; left: 80%;
 }
 
 .card-change-color-icon-pi {
-    top: 150px; left: 90%;
+    top: 120px; left: 88%;
 }
 
 .card-copy-icon-default {
-    top: 65px; left: 80%;
+    top: 50px; left: 80%;
 }
 
 .card-copy-icon-pi {
-    top: 75px; left: 90%;
+    top: 65px; left: 88%;
 }
 
 .card-image {
@@ -49,11 +49,11 @@
 .content {
 	overflow: hidden;
 	display: block;
-	width: 200px;
-	height: 110px;
-	margin: 5px 5px 0px 45px;
+	width: 158px;
+	height: 88px;
+	margin: 0px 23px 0px 34px;
 	font-family: 'Arial',"Arial Rounded MT Bold", arial, serif;
-	font-size: 22px;
+	font-size: 18px;
 	letter-spacing: 0px;
 	xtext-shadow: 0px 0px 1px #444;
 	opacity: 1;
@@ -65,21 +65,20 @@
 }
 
 .content-pi {
-	width: 250px;
-	height: 155px;
+	width: 180px;
+	height: 145px;
 	/* top | right | bottom | left */
-	margin: -15px 2px 0px 25px;
+	margin: -16px 23px 0px 18px;
 }
 
 .filler {
-	margin-right: 50px;
+	margin-right: 34px;
 	margin-bottom: 17%;
 	margin-left: 25px;
 }
 
 .filler-pi {
 	margin-bottom: 5%;
-	margin-right: 30px;
 }
 
 .stickertarget {
@@ -90,7 +89,7 @@
 	font-family: 'Arial', "Arial Rounded MT Bold", arial, serif;
 	color: black;
 	letter-spacing: 0px;
-	font-size: 22px;
+	font-size: 20px;
 	font-weight: bold;
 }
 
@@ -98,7 +97,7 @@
 	font-family: 'Arial', "Arial Rounded MT Bold", arial, serif;
 	color: black;
 	letter-spacing: 0px;
-	font-size: 20px;
+	font-size: 18px;
 	font-weight: bold;
 	font-style: italic;
 }
@@ -107,7 +106,7 @@
 	font-family: 'Arial', "Arial Rounded MT Bold", arial, serif;
 	color: black;
 	letter-spacing: 0px;
-	font-size: 18px;
+	font-size: 16px;
 	font-weight: bold;
 	font-style: italic;
 }

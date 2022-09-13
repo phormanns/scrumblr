@@ -1,19 +1,18 @@
-/* reset css */
-html,body,div,span,applet,object,iframe,h1,h2,h3,h4,h5,h6,p,blockquote,pre,a,abbr,acronym,address,big,cite,code,del,dfn,em,img,ins,kbd,q,s,samp,small,strike,strong,sub,sup,tt,var,b,u,i,center,dl,dt,dd,ol,ul,li,fieldset,form,label,legend,table,caption,tbody,tfoot,thead,tr,th,td,article,aside,canvas,details,embed,figure,figcaption,footer,header,hgroup,menu,nav,output,ruby,section,summary,time,mark,audio,video{margin:0;padding:0;border:0;font-size:100%;font:inherit;vertical-align:baseline}
-article,aside,details,figcaption,figure,footer,header,hgroup,menu,nav,section{display:block}
-body{line-height:1}
-ol,ul{list-style:none}
-blockquote,q{quotes:none}
-blockquote:before,blockquote:after,q:before,q:after{content:'';content:none}
-table{border-collapse:collapse;border-spacing:0}
+@font-face {
+  font-family: 'Rock Salt';
+  font-style: normal;
+  font-weight: 400;
+  src: url(/fonts/RockSalt.woff2) format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+2000-206F, U+2074, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
 
-[contenteditable] {
-	outline: 0px solid transparent;
-	/* fix contenteditable for safari: */
-	-webkit-user-select: text;
-    user-select: text;
-  }
-
+@font-face {
+  font-family: 'Covered By Your Grace';
+  font-style: normal;
+  font-weight: 400;
+  src: url(/fonts/CoveredByYourGrace.woff2) format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+2000-206F, U+2074, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
 
 body {
 	font-family: 'Helvetica Neue Light', arial, serif;
@@ -21,83 +20,20 @@ body {
 	color: #333;
 	background-color: #ddd;
 	xbackground-image: -webkit-gradient(radial, 265 118, 456, 147 0, 29, from(#DDDDDD), to(#f3f3f3));
-
 	padding-left: 10px;
-
 	xheight: 1400px;
 	xwidth: 2000px;
-
 	user-select: none;
 	-o-user-select:none;
 	-moz-user-select: none;
 	-khtml-user-select: none;
 	-webkit-user-select: none;
-
 	background-image: url('bg/concrete_wall_2_2.png');
-}
-
-/*
-https://headers-css.vercel.app/styles/header-1.css
-*/
-
-.site-header {
-	position: relative;
-	background-color: none; 
-}
-
-.site-header__wrapper {
-	padding-top: 1rem;
-	padding-bottom: 1rem; 
-}
-
-.site-header__wrapper {
-	display: flex;
-	justify-content: space-between;
-	align-items: center;
-	padding-top: 0;
-	padding-bottom: 0;
-} 
-
-.nav__wrapper {
-	  display: flex; 
-}
-
-.ui-menu { width: 150px; }
-.ui-icon { display: none; }
-#menu {
-	display: none;
-	position: absolute;
-	right: 138px;
-	z-index: 10000;
-
-}
-
-.nav__item a {
-	display: block;
-    padding: .5rem 1rem; 
-}
-
-.ui-widget-content {
-	background: #d6d2ce;
-}
-.ui-widget.ui-widget-content {
-	border: none;
-}
-.ui-state-active, .ui-widget-content .ui-state-active, .ui-widget-header .ui-state-active, a.ui-button:active, .ui-button:active, .ui-button.ui-state-active:hover {
-    border: 1px solid darkgrey;
-    background:darkgrey;
-    font-weight: normal;
-    color: #ffffff;
-}
-
-.board-wrapper {
-	width: fit-content;
 }
 
 #board {
 	position: relative;
 	background-color: #dcd5d1;
-
 	height: 100%;
 	xwidth: 980px;
 	xborder: solid silver 8px;
@@ -116,19 +52,14 @@ https://headers-css.vercel.app/styles/header-1.css
 	box-shadow:inset 1px 1px 3px #999;
 }
 
-
-
 .board-outline {
 	border: solid #ccc 8px;
 	display: block;
 	width: 996px;
 	height: 466px;
-
 	xmargin-left: auto;
 	xmargin-right: auto;
-
 	box-shadow: 1px 3px 2px #aaa;
-
 	x-webkit-transform:rotate(0.3deg); /*"is that a little off-level? i feel like it is off-level"*/
 }
 
@@ -141,41 +72,48 @@ https://headers-css.vercel.app/styles/header-1.css
 	background-image: url('scribbles2.png');
 }
 
-
-
 .hover .content {
 	xborder: solid rgba(92, 157, 181,0.5) 3px;
 }
 
-
 .card-icon {
-display:none;
-position: absolute;
-top: 3%; left: 85%;
-opacity: .5;
-width: 16px; height: 16px;
+    display:none;
+    position: absolute;
+    opacity: .3;
+    width: 16px; height: 16px;
+}
+
+.card-change-color-icon {
+    display:none;
+    position: absolute;
+    opacity: .3;
+    width: 25px; height: 25px;
+}
+
+.card-copy-icon {
+    display:none;
+    position: absolute;
+    opacity: .3;
+    width: 20px; height: 20px;
 }
 
 .card-icon-hover {
-	opacity: 1;
+	opacity: .9;
 }
 
-
-.card-icon2 {
-	top: 17%; left: 85%;
-
+.card-marked {
+    border: 3px black dotted;
 }
 
-
-.card .editing, .card .editing input, .card .editing textarea,
-.col .editing, .col .editing input, .col .editing textarea
-{
+.card-edit-form, .card-edit-form input, .card-edit-form textarea {
 	border: none;
 	font-size:inherit;
 	font-weight:inherit;
 	background-color:inherit;
+	xvertical-align: inherit;
 	font-family: inherit;
-	text-align: center;
+	text-align: left;
+	xcolor: #444;
 	padding: 0;
 	margin: 0;
 	outline-width:0;
@@ -184,30 +122,6 @@ width: 16px; height: 16px;
 	width: 100%;
 	color: #330066;
 	color: #666;
-	letter-spacing: inherit;
-	outline: none;
-	outline-width: 0;
-}
-
-#board-title .editing, #board-title .editing input, #board-title .editing textarea {
-	border: none;
-	font-size:inherit;
-	font-weight:inherit;
-	background-color:inherit;
-	font-family: inherit;
-	padding: 0;
-	margin: 0;
-	outline-width:0;
-	overflow: hidden;
-	resize: none;
-	width: 100%;
-	color: #330066;
-	color: #666;
-	letter-spacing: inherit;
-	outline: none;
-	outline-width: 0;
-	float: left;
-
 }
 
 .board-table {
@@ -241,59 +155,116 @@ width: 16px; height: 16px;
 }
 
 h1, h1 a {
-	color: #727272;
+	color: #b6b6b6;
 	padding: 0px;
 	margin: 0px;
 	margin-left: 1px;
 	font-weight: normal;
 	xtext-shadow: 1px 1px 1px #b6b6b6;
-	font-size: 26px;
+	font-size: 15px;
 	padding-top: 14px;
-	/*letter-spacing: +1px;*/
+	letter-spacing: +1px;
 	font-family:  "Helvetica Neue Light", "HelveticaNeue-Light", 'Helvetica Neue', arial, serif;
 	text-decoration: none;
-	height: 1.2em;
-}
-
-#board-title, .title {
-	color: #727272;
-	min-width: 20px;
 }
 
 h2 {
-	font-family: "Helvetica Neue Light", "HelveticaNeue-Light", 'Helvetica Neue', arial, serif;
+	font-family: 'Rock Salt', "Arial Rounded MT Bold", arial, serif;
 	color: #5c9db4;
 	font-size: 18px;
-	margin-top: 16px;
-	opacity: 0.9;
-	line-height: normal;
-}
+	}
 
-.greyheading, .greyheading a
-{
-	color: #727272;
-	padding: 0px;
-	margin: 0px;
-	margin-left: 1px;
-	font-weight: normal;
-	xtext-shadow: 1px 1px 1px #b6b6b6;
+h3 {
+	font-family: 'Rock Salt', "Arial Rounded MT Bold", arial, serif;
+	color: #5c9db4;
 	font-size: 14px;
-	/*letter-spacing: +1px;*/
-	font-family:  "Helvetica Neue Light", "HelveticaNeue-Light", 'Helvetica Neue', arial, serif;
-	text-decoration: none;
-	height: 1.2em;
-
-	margin-top: 10px;
-}
+	}
 
 .bottom-icon {
 	padding: 5px;
-	padding-top: 8px;
-	opacity: 0.5;
+	opacity: .4;
+}
+
+.bottom-icon-white {
+	padding: 5px;
+	opacity: .4;
+	color: white;
+}
+
+.bottom-icon-green {
+	padding: 5px;
+	opacity: .4;
+	color: green;
+}
+
+.bottom-icon-blue {
+	padding: 5px;
+	opacity: .4;
+	color: blue;
+}
+
+.bottom-icon-yellow {
+	padding: 5px;
+	opacity: .4;
+	color: yellow;
+}
+
+.bottom-icon-orange {
+	padding: 5px;
+	opacity: .4;
+	color: orange;
+}
+
+.bottom-icon-purple {
+	padding: 5px;
+	opacity: .4;
+	color: purple;
+}
+
+.bottom-icon-red {
+	padding: 5px;
+	opacity: .4;
+	color: red;
 }
 
 .bottom-icon:hover {
-	opacity: 1.0;
+	padding: 5px;
+	opacity: .6;
+}
+
+.bottom-icon-white:hover {
+	padding: 5px;
+	opacity: .8;
+}
+
+.bottom-icon-green:hover {
+	padding: 5px;
+	opacity: .8;
+}
+
+.bottom-icon-blue:hover {
+	padding: 5px;
+	opacity: .8;
+}
+
+.bottom-icon-yellow:hover {
+	padding: 5px;
+	opacity: .8;
+}
+
+.bottom-icon-orange:hover {
+	padding: 5px;
+	opacity: .8;
+}
+
+.bottom-icon-purple:hover {
+	padding: 5px;
+	opacity: .8;
+}
+
+.bottom-icon-red:hover {
+	padding: 5px;
+	opacity: .8;
 }
 
 .faded-icon {
@@ -304,27 +275,34 @@ h2 {
 	opacity: .6;
 }
 
-
-
 #add-col {
-	position: absolute; right: 3px; top: 200px; display: none;
+	position: absolute; right: 3px; top: 200px; display: none; opacity: .15;
+}
+#add-col:hover {
+	opacity: .5;
 }
 
 #delete-col {
-	position: absolute; right: 3px; top: 228px; display: none;
+	position: absolute; right: 3px; top: 224px; display: none; opacity: .15;
+}
+#delete-col:hover {
+	opacity: .5;
 }
 
-.col-icon {
-	opacity: 0.4;	
+#add-row {
+	position: absolute; right: 3px; top: 250px; display: none; opacity: .15;
 }
 
-.col-icon:hover {
-	opacity: 1.0;
+#add-row:hover {
+	opacity: .5;
 }
 
-.column-editable {
-	min-height: 40px;
-	min-width: 70px;
+#delete-row {
+	position: absolute; right: 3px; top: 274px; display: none; opacity: .15;
+}
+
+#delete-row:hover {
+	opacity: .5;
 }
 
 #config-dropdown {
@@ -347,16 +325,26 @@ h2 {
 	float: left;
 }
 
+.buttons-dialog {
+	border: solid #aaaaaa 2px;
+	width: 230px;
+	height: 70px;
+	border-radius: 5px;
+	background-color: #dcd5d1;
+	box-shadow: 0px 0px 10px #888;
+	padding: 2px;
+	visibility: hidden;
+	z-index: 90000;
+}
+
 .names {
 	padding-left: 10px;
-	margin-top: 18px;
-	xwidth: 980px;
+	width: 980px;
 	text-align: right;
 	color: #bbb;
 	letter-spacing: 4px;
 	font-family:  "Helvetica Neue Light", "HelveticaNeue-Light", 'Helvetica Neue', arial, serif;
 	font-size: 13px;
-
 }
 
 .names p {
@@ -380,7 +368,6 @@ h2 {
     width: 100px;
     background: -webkit-gradient(linear, left top, left 25, from(#FFFFFF), color-stop(4%, #EEEEEE), to(#FFFFFF));
     background: -moz-linear-gradient(top, #FFFFFF, #EEEEEE 1px, #FFFFFF 25px);
-
 	background: none;
 	border-radius: 10px;
 	color: #666;
@@ -389,7 +376,6 @@ h2 {
 	font-size: 13px;
 	letter-spacing: 4px;
 	margin:0;
-
 	position: relative;
 }
 
@@ -400,7 +386,7 @@ h2 {
     width: 100px;
     background: -webkit-gradient(linear, left top, left 25, from(#FFFFFF), color-stop(4%, #EEEEEE), to(#FFFFFF));
     background: -moz-linear-gradient(top, #FFFFFF, #EEEEEE 1px, #FFFFFF 25px);
-xopacity: .5;
+    xopacity: .5;
 	background: none;
     box-shadow: rgba(0,0,0, 0.1) 0px 0px 8px;
 	border-radius: 10px;
@@ -410,7 +396,6 @@ xopacity: .5;
 	font-size: 13px;
 	letter-spacing: 4px;
 	margin:0;
-
 }
 
 .names .focused {
@@ -439,11 +424,10 @@ xopacity: .5;
 }
 
 .stickers {
-	xwidth: 1000px;
+	width: 1000px;
 	text-align: right;
-	padding-top: 6px; margin: 0;
+	padding-top: 2px; margin: 0;
 }
-
 
 #sticker-red {
 	background-image: url('../images/stickers/sticker-red.png');
@@ -485,7 +469,6 @@ xopacity: .5;
 	background-image: url('../images/icons/iconic/raster/black/plus_8x8.png');
 	background-position: 2px 2px;
 	opacity: 0.3;
-
 	display: inline-block;
 	width: 11px;
 	height: 11px;
@@ -507,81 +490,6 @@ xopacity: .5;
 #sticker-redstar {
 	top: 1px;
 }
-
-/*.sticker-red {
-	background-image: url('../images/stickers/sticker-red.png');
-	background-repeat: no-repeat;
-	background-position: right bottom;
-}
-
-.sticker-blue {
-	background-image: url('../images/stickers/sticker-blue.png');
-	background-repeat: no-repeat;
-	background-position: right bottom;
-}
-
-.sticker-yellow {
-	background-image: url('../images/stickers/sticker-yellow.png');
-	background-repeat: no-repeat;
-	background-position: right bottom;
-}
-
-.sticker-green {
-	background-image: url('../images/stickers/sticker-green.png');
-	background-repeat: no-repeat;
-	background-position: right bottom;
-}
-
-.sticker-gold {
-	background-image: url('../images/stickers/sticker-gold.png');
-	background-repeat: no-repeat;
-	background-position: right bottom;
-}
-
-.sticker-bluestar {
-	background-image: url('../images/stickers/sticker-bluestar.png');
-	background-repeat: no-repeat;
-	background-position: right bottom;
-}
-
-.sticker-silverstar {
-	background-image: url('../images/stickers/sticker-silverstar.png');
-	background-repeat: no-repeat;
-	background-position: right bottom;
-}
-
-.sticker-redstar {
-	background-image: url('../images/stickers/sticker-redstar.png');
-	background-repeat: no-repeat;
-	background-position: right bottom;
-}
-
-.sticker-pink {
-	background-image: url('../images/stickers/sticker-pink.png');
-	background-repeat: no-repeat;
-	background-position: right bottom;
-}
-
-.sticker-orange {
-	background-image: url('../images/stickers/sticker-orange.png');
-	background-repeat: no-repeat;
-	background-position: right bottom;
-}
-
-.sticker-lightblue {
-	background-image: url('../images/stickers/sticker-lightblue.png');
-	background-repeat: no-repeat;
-	background-position: right bottom;
-}
-
-.sticker-purple {
-	background-image: url('../images/stickers/sticker-purple.png');
-	background-repeat: no-repeat;
-	background-position: right bottom;
-}*/
-
-
-
 
 /* Stuff for landing page */
 h1.home {
@@ -609,7 +517,6 @@ h1.home {
 
 p.home a {
 	color: #5c9db4;
-
 	text-decoration: none;
 }
 
@@ -642,18 +549,14 @@ input:hover {
 }
 
 #go {
-	 background: none;
+	background: none;
     margin-bottom: 10px;
     border: none;
 	font-size: 40px;
 	font-family: 'Covered By Your Grace',"Arial Rounded MT Bold", arial, serif;
 	color: #19ba98;
 	color: black;
-
 	xborder: solid 1px;
-
-
-
 }
 
 .notice-bar {
@@ -662,7 +565,7 @@ input:hover {
 	padding: 0;
 	margin: 0;
 	xtext-align: center;
-	xmargin-left: 300px;
+	margin-left: 300px;
 }
 
 .notice-bar a {
@@ -678,7 +581,6 @@ input:hover {
 	position: absolute; bottom: 0; right: 70px;
 	z-index: 1;
 }
-
 
 .card-hover-draggable {
 	xborder: 1px dashed blue;
@@ -706,11 +608,6 @@ img {
 	bottom: 4px;
 }
 
-
-
-
-
-
 .filler {
 	xwidth: 100%;
 	xbackground-color: rgba(255,0,0,0.1);
@@ -725,10 +622,8 @@ img {
 	color: #999
 }
 
-
-
-
 /* states and images */
+.ui-icon { width: 16px; height: 16px; background-image: url(../images/ui-icons_222222_256x240.png); }
 .ui-widget-content .ui-icon {background-image: url(../images/ui-icons_222222_256x240.png); }
 .ui-widget-header .ui-icon {background-image: url(../images/ui-icons_222222_256x240.png); }
 .ui-state-default .ui-icon { background-image: url(../images/ui-icons_888888_256x240.png); }
@@ -736,7 +631,6 @@ img {
 .ui-state-active .ui-icon {background-image: url(../images/ui-icons_454545_256x240.png); }
 .ui-state-highlight .ui-icon {background-image: url(../images/ui-icons_2e83ff_256x240.png); }
 .ui-state-error .ui-icon, .ui-state-error-text .ui-icon {background-image: url(../images/ui-icons_cd0a0a_256x240.png); }
-
 
 .ui-resizable { position: relative;}
 .ui-resizable-handle { position: absolute;font-size: 0.1px;z-index: 99999; display: block;}
@@ -752,34 +646,40 @@ img {
 
 .ui-icon-gripsmall-diagonal-se { background-position: -64px -224px; }
 
+.row-line {
+	text-align: left;
+	horizontal-align: left;
+	vertical-align: top;
+	cursor: n-resize;
+	width: 1px;
+	height: 40px;
+	background-image: url('../images/blue-board-line.png');
+	background-repeat: repeat-x;
+	background-position: left bottom;
+	overflow: auto;
+}
 
+.row-icon {
+    display:none;
+    position: absolute;
+    top: 8px; left: 8px;
+    opacity: .3;
+    width: 15px; height: 15px;
+}
 
-.signature_wrapper {
-	position: relative;
-	width: 400px;
-	height: 200px;
-	-moz-user-select: none;
-	-webkit-user-select: none;
-	-ms-user-select: none;
-	user-select: none;
-  }
-  
-  .signature-pad {
-	position: absolute;
-	left: 0;
-	top: 0;
-	/* width:800px;
-	height:400px; */
-	xbackground-color: white;
-	z-index: 1;
-  }
+.row-icon-hover {
+	opacity: .9;
+}
 
-  #pen[data-ison=false] {
-	  color: grey;
-  }
+.row-text {
+	font-family: 'Rock Salt', "Arial Rounded MT Bold", arial, serif;
+	color: #5c9db4;
+	font-size: 14px;
+	font-weight: bold;
+	width: 100px;
+}
 
-
-  #pen[data-ison=true] {
-	color: black;
-	opacity: 1;
+#select-box {
+    border: 1px dotted #000;
+    position: absolute;
 }

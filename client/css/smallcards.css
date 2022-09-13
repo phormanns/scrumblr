@@ -3,32 +3,37 @@
 	height: 76px;
 	xpadding: 5px; float: left;
 	xmargin: 0 10px 10px 0;
-	font-size: .9em;
-
-
-
+    font-size: .9em;
 	overflow: hidden;
-
 	position: absolute;
 	z-index: 10;
-
 	top: 460px;
 	left: 0px;
-
 	display: block;
-
 }
 
-.pink {
+.card-icon-default {
+    top: 0px; left: 85%;
 }
 
-.yellow {
+.card-icon-pi {
+    top: 0px; left: 85%;
 }
 
-.blue {
+.card-change-color-icon-default {
+    top: 50px; left: 80%;
 }
 
-.green {
+.card-change-color-icon-pi {
+    top: 50px; left: 80%;
+}
+
+.card-copy-icon-default {
+    top: 25px; left: 84%;
+}
+
+.card-copy-icon-pi {
+    top: 25px; left: 84%;
 }
 
 .card-image {
@@ -46,115 +51,73 @@
 	display: block;
 	width: 79px;
 	height: 45px;
-	margin: 1px 10px 0px 19px;
-
+	/* top | right | bottom | left */
+	margin: 4px 10px 0px 22px;
 	font-family: "Arial Rounded MT Bold" , arial, serif;
 	font-size: 10px;
 	letter-spacing: 0px;
 	line-height: 9px;
-
 	xtext-shadow: 0px 0px 1px #444;
-
 	opacity: 1;
-
 	color: #333;
-	text-align: center;
-	padding-top: 8px;
+	text-align: left;
+	padding-top: 5px;
 }
 
+.content-pi {
+	width: 95px;
+	height: 65px;
+	/* top | right | bottom | left */
+	margin: 0px 2px 0px 12px;
+}
 
 .filler {
 	margin-right: 12px;
-	margin-bottom: 19px;
+	margin-bottom: 15%;
 	margin-left: 19px;
 }
 
-
-.xcontent {
-	overflow: hidden;
-	display: block;
-	width: 79px;
-	height: 45px;
-	margin: 0px 10px 0px 19px;
-
-	font-family: "Arial Rounded MT Bold", "Arial" , arial, serif;
-	xfont-size: 10px;
-	letter-spacing: 0px;
-	line-height: 8px;
-
-	xtext-shadow: 0px 0px 1px #444;
-
-	opacity: 1;
-
-	color: #333;
-	text-align: center;
-	padding-top: 8px;
+.filler-pi {
+	margin-bottom: 5%;
+	margin-left: 19px;
 }
 
-
-
-.sticky {
-	width: 56px;
-	height: 50px;
-	xpadding: 5px; float: left;
-	xmargin: 0 10px 10px 0;
-	font-size: .9em;
-
-
-
-	overflow: visible;
-
-	position: absolute;
-	z-index: 10;
-
-	top: 460px;
-	left: 0px;
-
-	display: block;
-}
-
-
-.card-icon {
-	top: 0px;
-}
-
-.card-icon2 {
-	top: 17px; left: 85%;
-
-}
-
-.sticky .content {
-	overflow: hidden;
-	display: block;
-	width: 33px;
-	height: 32px;
-	margin: 1px 3px 0px 19px;
-
-	font-family: 'Covered By Your Grace',"Arial Rounded MT Bold", arial, serif;
-	font-size: 11px;
-	letter-spacing: 0px;
-
-	xtext-shadow: 0px 0px 1px #444;
-
-	opacity: .9;
-
+.content h1 {
+	font-family: "Arial Rounded MT Bold", arial, serif;
 	color: black;
-	text-align: center;
-	padding-top: 4px;
-	xline-height: 16px;
-
-	align-items: center;
-    justify-content: center;
-    display: flex;
+	letter-spacing: 0px;
+	font-size: 10px;
+	font-weight: bold;
 }
 
-.sticky .card-icon {
-	xleft: 100px;
-	top: -5px;
+.content h2 {
+	font-family: "Arial Rounded MT Bold", arial, serif;
+	color: black;
+	letter-spacing: 0px;
+	font-size: 10px;
+	font-weight: bold;
+	font-style: italic;
 }
 
-.sticky .filler {
-	margin-right: 2px;
-    margin-bottom: 12px;
-    margin-left: 25px;
+.content h3 {
+	font-family: "Arial Rounded MT Bold", arial, serif;
+	color: black;
+	letter-spacing: 0px;
+	font-size: 10px;
+	font-style: italic;
+}
+
+.content ul {
+	margin-left: 10px;
+}
+
+.content * {
+	margin-top: 0;
+	margin-left: 0;
+	margin-bottom: 0;
+	margin-right: 0;
+	padding-top: 0;
+	padding-bottom: 0;
+	padding-left: 0;
+	padding-right: 0;
 }

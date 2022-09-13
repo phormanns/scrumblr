@@ -2,43 +2,19 @@
  SYSTEM INCLUDES
 **************/
 var	http = require('http');
-var sys = require('util');
+var sys = require('sys');
 var	async = require('async');
 var sanitizer = require('sanitizer');
+var sanitizeMarkdown = require('sanitize-markdown');
 var compression = require('compression');
 var express = require('express');
-// var conf = require('./config.js').server;
-var nconf = require('nconf');
-
-/*************
- * nconf SETUP
- *************/
-
-// Set up nconf to include configuration first
-// From command line args, then env, then
-// config file
-nconf.argv()
-.env()
-.file({ file: 'config.json' });
-
-// Now set default config values:
-// nconf.set('server:baseurl', '/');
-// nconf.set('server:host', '127.0.0.1');
-// nconf.set('server:port', 3000);
-
-// nconf.set('redis:url', 'redis://127.0.0.1:6379');
-// nconf.set('redis:prefix', '#scrumblr#');
-
-console.log('NODE_ENV: ' + nconf.get('NODE_ENV'));
-console.log('server: ' + JSON.stringify(nconf.get('server')));
-console.log('redis: ' + JSON.stringify(nconf.get('redis')));
+var conf = require('./config.js').server;
 
 /**************
  LOCAL INCLUDES
 **************/
 var	rooms	= require('./lib/rooms.js');
-var	data	= require('./lib/data/redis.js').db;
-
+var	data	= require('./lib/data.js').db;
 
 /**************
  GLOBALS
@@ -52,107 +28,104 @@ var sids_to_user_names = [];
 var app = express();
 var router = express.Router();
 
-app.set('view engine', 'pug');
-
 app.use(compression());
-app.use(nconf.get('server:baseurl'), router);
+app.use(conf.baseurl, router);
 
 router.use(express.static(__dirname + '/client'));
 
 var server = require('http').Server(app);
+server.listen(conf.port);
+
+console.log('Server running at http://127.0.0.1:' + conf.port + '/');
 
 /**************
  SETUP Socket.IO
 **************/
-// var io = require('socket.io')(server, {
-// 	path: conf.baseurl == '/' ? '' : conf.baseurl + "/socket.io"
-// });
-// We move socket.io from it's default URL (/socket.io) to (/socketio) because during
-// the upgrade to new socket.io, old clients on production server were hitting old
-// URL and crashing the server.
-const options = { path: '/socketio' };
-const io = require('socket.io')(server, options);
-
-server.listen(nconf.get('server:port'), nconf.get('server:host'));
-console.log('Server running at port:' + nconf.get('server:host') + ':' + nconf.get('server:port') + '/');
-
+var io = require('socket.io')(server, {
+	path: conf.baseurl == '/' ? '' : conf.baseurl + "/socket.io"
+});
 
 /**************
  ROUTES
 **************/
 router.get('/', function(req, res) {
 	//console.log(req.header('host'));
-	var url = req.header('host') + req.baseUrl;
+	url = req.header('host') + req.baseUrl;
 
-	var clientsCount = io.of("/").sockets.size;
+	var connected = io.sockets.connected;
+	clientsCount = Object.keys(connected).length;
 
-	res.render('home.pug', {
+	res.render('home.jade', {
 		url: url,
 		connected: clientsCount
 	});
 });
 
-
 router.get('/demo', function(req, res) {
-	res.render('index.pug', {
+	res.render('index.jade', {
 		pageTitle: 'scrumblr - demo',
 		demo: true
 	});
 });
 
 router.get('/:id', function(req, res){
-	res.render('index.pug', {
+	res.render('index.jade', {
 		pageTitle: ('scrumblr - ' + req.params.id)
 	});
 });
 
-
 /**************
  SOCKET.I0
 **************/
-io.on('connection', (client) => {
-	//santizes text
-	function scrub( text ) {
-		if (typeof text != "undefined" && text !== null)
-		{
-			//clip the string if it is too long
-			if (text.length > 65535)
-			{
-				text = text.substr(0,65535);
-			}
-
+io.sockets.on('connection', function (client) {
+	// sanitizes text
+	function scrub(text) {
+		if (typeof text != "undefined" && text !== null) {
+            text = clip_text(text);
 			return sanitizer.sanitize(text);
-		}
-		else
-		{
+		} else {
 			return null;
 		}
 	}
 
+	// sanitizes markdown
+	function scrub_md(text) {
+		if (typeof text != "undefined" && text !== null) {
+            text = clip_text(text);
+			return sanitizeMarkdown(text);
+		} else {
+			return null;
+		}
+	}
 
+	// ensure that the text has a reasonable length
+	function clip_text(text) {
+        if (text.length > 5000) {
+            text = text.substr(0, 5000);
+        }
+        return text;
+	}
 
 	client.on('message', function( message ){
-		//console.log(message.action + " -- " + sys.inspect(message.data) );
+		console.log('Server action:' + message.action + ' -- ' + sys.inspect(message.data) );
 
 		var clean_data = {};
 		var clean_message = {};
 		var message_out = {};
 
-		if (!message.action)	return;
+		if (!message.action) {
+		    return;
+		}
 
-		switch (message.action)
-		{
+		switch (message.action) {
 			case 'initializeMe':
 				initClient(client);
 				break;
 
 			case 'joinRoom':
 				joinRoom(client, message.data, function(clients) {
-
-						client.send( { action: 'roomAccept', data: '' } );
-
+                    client.json.send( { action: 'roomAccept', data: '' } );
 				});
-
 				break;
 
 			case 'moveCard':
@@ -168,22 +141,17 @@ io.on('connection', (client) => {
 					}
 				};
 
-
 				broadcastToRoom( client, message_out );
-
-				// console.log("-----" + message.data.id);
-				// console.log(JSON.stringify(message.data));
 
 				getRoom(client, function(room) {
 					db.cardSetXY( room , message.data.id, message.data.position.left, message.data.position.top);
 				});
-
 				break;
 
 			case 'createCard':
 				data = message.data;
 				clean_data = {};
-				clean_data.text = scrub(data.text);
+				clean_data.text = scrub_md(data.text);
 				clean_data.id = scrub(data.id);
 				clean_data.x = scrub(data.x);
 				clean_data.y = scrub(data.y);
@@ -191,9 +159,17 @@ io.on('connection', (client) => {
 				clean_data.colour = scrub(data.colour);
 				clean_data.type = scrub(data.type);
 
-
 				getRoom(client, function(room) {
-					createCard( room, clean_data.id, clean_data.text, clean_data.x, clean_data.y, clean_data.rot, clean_data.colour, clean_data.type);
+					createCard(
+					    room,
+					    clean_data.id,
+					    clean_data.text,
+					    clean_data.x,
+					    clean_data.y,
+					    clean_data.rot,
+					    clean_data.colour,
+					    clean_data.type
+					);
 				});
 
 				message_out = {
@@ -206,18 +182,19 @@ io.on('connection', (client) => {
 				break;
 
 			case 'editCard':
-
 				clean_data = {};
-				clean_data.value = scrub(message.data.value);
 				clean_data.id = scrub(message.data.id);
-				clean_data.colour = scrub(message.data.colour);
+				if (message.data.value) {
+					clean_data.value = scrub_md(message.data.value);
+				}
 
-				// console.log("cardupdate:");
-				// console.log(clean_data);
+				if (message.data.colour) {
+					clean_data.colour = scrub(message.data.colour);
+				}
 
 				//send update to database
 				getRoom(client, function(room) {
-					db.cardEdit( room , clean_data.id, clean_data.value, clean_data.colour );
+					db.cardEdit( room , clean_data.id, clean_data.value, clean_data.colour);
 				});
 
 				message_out = {
@@ -226,9 +203,7 @@ io.on('connection', (client) => {
 				};
 
 				broadcastToRoom(client, message_out);
-
 				break;
-
 
 			case 'deleteCard':
 				clean_message = {
@@ -245,6 +220,17 @@ io.on('connection', (client) => {
 
 				break;
 
+			case 'pulsateCard':
+				clean_message = {
+					action: 'pulsateCard',
+					data: {
+					    id: scrub(message.data.id)
+					}
+				};
+
+				broadcastToRoom( client, clean_message );
+				break;
+
 			case 'createColumn':
 				clean_message = { data: scrub(message.data) };
 
@@ -253,15 +239,14 @@ io.on('connection', (client) => {
 				});
 
 				broadcastToRoom( client, clean_message );
-
 				break;
 
 			case 'deleteColumn':
 				getRoom( client, function(room) {
 					db.deleteColumn(room);
 				});
-				broadcastToRoom( client, { action: 'deleteColumn' } );
 
+				broadcastToRoom( client, { action: 'deleteColumn' } );
 				break;
 
 			case 'updateColumns':
@@ -281,7 +266,89 @@ io.on('connection', (client) => {
 				});
 
 				broadcastToRoom( client, { action: 'updateColumns', data: clean_columns } );
+				break;
 
+			case 'createRow':
+				clean_message = {
+					action: 'createRow',
+					data: {
+					    id: scrub(message.data.id),
+					    text: scrub(message.data.text),
+					    y: scrub(message.data.y)
+					}
+				};
+
+				getRoom( client, function(room) {
+					db.createRow( room, clean_message.data.id, clean_message.data);
+				});
+
+				broadcastToRoom( client, clean_message );
+				break;
+
+			case 'updateRowText':
+				clean_message = {
+					action: 'updateRowText',
+					data: {
+					    id: scrub(message.data.id),
+					    text: scrub(message.data.text)
+					}
+				};
+
+				getRoom( client, function(room) {
+					db.updateRowText( room, clean_message.data.id, clean_message.data.text);
+				});
+
+				broadcastToRoom( client, clean_message );
+				break;
+
+			case 'updateRowPos':
+				clean_message = {
+					action: 'updateRowPos',
+					data: {
+					    id: scrub(message.data.id),
+					    y: scrub(message.data.y)
+					}
+				};
+
+				getRoom( client, function(room) {
+					db.updateRowPos( room, clean_message.data.id, clean_message.data.y);
+				});
+
+				broadcastToRoom( client, clean_message );
+				break;
+
+			case 'deleteRow':
+				clean_message = {
+					action: 'deleteRow',
+					data: {
+					    id: scrub(message.data.id)
+					}
+				};
+
+				getRoom( client, function(room) {
+					db.deleteRow(room, clean_message.data.id);
+				});
+
+				broadcastToRoom( client, clean_message);
+				break;
+
+			case 'updateRows':
+				var rows = message.data;
+
+				if (!(rows instanceof Array))
+					break;
+
+				var clean_rows = [];
+
+				for (var i in rows)
+				{
+					clean_rows[i] = scrub( rows[i] );
+				}
+				getRoom( client, function(room) {
+					db.setRows( room, clean_rows );
+				});
+
+				broadcastToRoom( client, { action: 'updateRows', data: clean_rows } );
 				break;
 
 			case 'changeTheme':
@@ -307,6 +374,7 @@ io.on('connection', (client) => {
 				var msg = {};
 				msg.action = 'nameChangeAnnounce';
 				msg.data = { sid: client.id, user_name: clean_message.data };
+
 				broadcastToRoom( client, msg );
 				break;
 
@@ -322,7 +390,6 @@ io.on('connection', (client) => {
 				break;
 
 			case 'setBoardSize':
-
 				var size = {};
 				size.width = scrub(message.data.width);
 				size.height = scrub(message.data.height);
@@ -334,26 +401,40 @@ io.on('connection', (client) => {
 				broadcastToRoom( client, { action: 'setBoardSize', data: size } );
 				break;
 
-			case 'editText':
-				var text = "";
-				text = scrub(message.data.text);
+			case 'moveMarker':
+				message_out = {
+					action: message.action,
+					data: {
+						id: scrub(message.data.id),
+						x: scrub(message.data.x)
+					}
+				};
 
-				//shorten string in case it is long
-				text = text.substring(0,64);
+				broadcastToRoom(client, message_out);
 
-				//save Board Name to DB @TODO
 				getRoom(client, function(room) {
-					db.textEdit( room, 'board-title', text );
+					db.moveMarkerX(room , message.data.id, message.data.x);
 				});
+				break;
 
-				var msg = {};
-				msg.action = 'editText';
-				msg.data = { item: 'board-title', text: text };
-				broadcastToRoom( client, msg );
+			case 'moveEraser':
+				message_out = {
+					action: message.action,
+					data: {
+						id: scrub(message.data.id),
+						x: scrub(message.data.x)
+					}
+				};
+
+				broadcastToRoom(client, message_out);
+
+				getRoom(client, function(room) {
+					db.moveEraserX(room , message.data.id, message.data.x);
+				});
 				break;
 
 			default:
-				//console.log('unknown action');
+			    console.log('unknown action: ' + message.action);
 				break;
 		}
 	});
@@ -366,22 +447,16 @@ io.on('connection', (client) => {
   //client.broadcast('someone has connected');
 });
 
-
-
-
-
-
 /**************
  FUNCTIONS
 **************/
-function initClient ( client )
+function initClient(client)
 {
 	//console.log ('initClient Started');
 	getRoom(client, function(room) {
 
-		db.getAllCards( room , function (cards) {
-
-			client.send(
+		db.getAllCards(room , function (cards) {
+			client.json.send(
 				{
 					action: 'initCards',
 					data: cards
@@ -390,9 +465,8 @@ function initClient ( client )
 
 		});
 
-
-		db.getAllColumns ( room, function (columns) {
-			client.send(
+		db.getAllColumns(room, function (columns) {
+			client.json.send(
 				{
 					action: 'initColumns',
 					data: columns
@@ -400,12 +474,47 @@ function initClient ( client )
 			);
 		});
 
+		db.getAllRows(room, function (rows) {
+			client.json.send(
+				{
+					action: 'initRows',
+					data: rows
+				}
+			);
+		});
 
-		db.getTheme( room, function(theme) {
+		db.getEraser(room, function(eraser) {
+		    if (eraser == null) {
+		        eraser = {id: 'eraser', x: '70px'};
+		    }
 
-			if (theme === null) theme = 'bigcards';
+			client.json.send(
+				{
+					action: 'moveEraser',
+					data: eraser
+				}
+			);
+		});
 
-			client.send(
+		db.getMarker(room, function(marker) {
+		    if (marker == null) {
+		        marker = {id: 'marker', x: '200px'};
+		    }
+
+			client.json.send(
+				{
+					action: 'moveMarker',
+					data: marker
+				}
+			);
+		});
+
+		db.getTheme(room, function(theme) {
+			if (theme === null) {
+			    theme = 'bigcards';
+			}
+
+			client.json.send(
 				{
 					action: 'changeTheme',
 					data: theme
@@ -414,25 +523,11 @@ function initClient ( client )
 		});
 
 		db.getBoardSize( room, function(size) {
-
 			if (size !== null) {
-				client.send(
+				client.json.send(
 					{
 						action: 'setBoardSize',
 						data: size
-					}
-				);
-			}
-		});
-
-		//Right now this only gets one object (board title) but we will extend it later
-		//to handle an array of all text we want to sync
-		db.getAllTexts( room , function (texts) {
-			if (texts) {
-				client.send(
-					{
-						action: 'editText',
-						data: { item: "board-title", text: texts }
 					}
 				);
 			}
@@ -442,10 +537,8 @@ function initClient ( client )
 		roommates = [];
 
 		var j = 0;
-		for (var i in roommates_clients)
-		{
-			if (roommates_clients[i].id != client.id)
-			{
+		for (var i in roommates_clients) {
+			if (roommates_clients[i].id != client.id) {
 				roommates[j] = {
 					sid: roommates_clients[i].id,
 					user_name:  sids_to_user_names[roommates_clients[i].id]
@@ -454,8 +547,7 @@ function initClient ( client )
 			}
 		}
 
-		//console.log('initialusers: ' + roommates);
-		client.send(
+		client.json.send(
 			{
 				action: 'initialUsers',
 				data: roommates
@@ -466,22 +558,20 @@ function initClient ( client )
 }
 
 
-function joinRoom (client, room, successFunction)
-{
+function joinRoom (client, room, successFunction) {
 	var msg = {};
 	msg.action = 'join-announce';
-	msg.data		= { sid: client.id, user_name: client.user_name };
+	msg.data = { sid: client.id, user_name: client.user_name };
 
 	rooms.add_to_room_and_announce(client, room, msg);
 	successFunction();
 }
 
-function leaveRoom (client)
-{
+function leaveRoom (client) {
 	//console.log (client.id + ' just left');
 	var msg = {};
 	msg.action = 'leave-announce';
-	msg.data	= { sid: client.id };
+	msg.data = { sid: client.id };
 	rooms.remove_from_all_rooms_and_announce(client, msg);
 
 	delete sids_to_user_names[client.id];
@@ -492,7 +582,7 @@ function broadcastToRoom ( client, message ) {
 }
 
 //----------------CARD FUNCTIONS
-function createCard( room, id, text, x, y, rot, colour, type ) {
+function createCard( room, id, text, x, y, rot, colour, type) {
 	var card = {
 		id: id,
 		colour: colour,
@@ -500,61 +590,54 @@ function createCard( room, id, text, x, y, rot, colour, type ) {
 		x: x,
 		y: y,
 		text: text,
-		type: type,
-		sticker: null
+		sticker: null,
+		type: type
 	};
 
 	db.createCard(room, id, card);
 }
 
-function roundRand( max )
-{
+function roundRand( max ) {
 	return Math.floor(Math.random() * max);
 }
 
-
-
 //------------ROOM STUFF
 // Get Room name for the given Session ID
-function getRoom( client , callback )
-{
+function getRoom( client , callback ) {
 	room = rooms.get_room( client );
-	//console.log( 'client: ' + client.id + " is in " + room);
 	callback(room);
 }
 
-
-function setUserName ( client, name )
-{
+function setUserName ( client, name ) {
 	client.user_name = name;
 	sids_to_user_names[client.id] = name;
-	//console.log('sids to user names: ');
 	console.dir(sids_to_user_names);
 }
 
-function cleanAndInitializeDemoRoom()
-{
+function cleanAndInitializeDemoRoom() {
+    room_name = '/demo'
+
 	// DUMMY DATA
-	db.clearRoom('/demo', function() {
-		db.createColumn( '/demo', 'Not Started' );
-		db.createColumn( '/demo', 'Started' );
-		db.createColumn( '/demo', 'Testing' );
-		db.createColumn( '/demo', 'Review' );
-		db.createColumn( '/demo', 'Complete' );
+	db.clearRoom(room_name, function() {
+		db.setBoardSize(room_name, { width: 1200, height: 600 });
+		db.setTheme(room_name, 'bigcards')
 
+		db.createColumn(room_name, 'To Do' );
+		db.createColumn(room_name, 'In progress' );
+		db.createColumn(room_name, 'Done' );
 
-		createCard('/demo', 'card1', 'Hello this is fun', roundRand(600), roundRand(300), Math.random() * 10 - 5, 'yellow');
-		createCard('/demo', 'card2', 'Hello this is a new story.', roundRand(600), roundRand(300), Math.random() * 10 - 5, 'white');
-		createCard('/demo', 'card3', '.', roundRand(600), roundRand(300), Math.random() * 10 - 5, 'blue');
-		createCard('/demo', 'card4', '.', roundRand(600), roundRand(300), Math.random() * 10 - 5, 'green');
+		createCard(room_name, 'card1', '**Discuss** new topics', 64, 235, Math.random() * 10 - 5, 'yellow');
+		createCard(room_name, 'card2', '# Important\n- Water the **flowers**!\n- Send a letter', 424, 217, Math.random() * 10 - 5, 'white');
+		createCard(room_name, 'card3', 'Buy tickets to the _cinema_.', 430, 450, Math.random() * 10 - 5, 'blue');
+		createCard(room_name, 'card4', 'Read funny book', 423, 66, Math.random() * 10 - 5, 'green');
+		createCard(room_name, 'card5', 'Learn [markdown syntax](https://www.markdownguide.org/basic-syntax/)', 0, 47, Math.random() * 10 - 5, 'red');
+		createCard(room_name, 'card6', 'Call your **friends**...', 855, 72, Math.random() * 10 - 5, 'orange');
+		createCard(room_name, 'card7', '# Repair printer\n---\nand test it!', 902, 240, Math.random() * 10 - 5, 'purple');
+		createCard(room_name, 'card8', 'Meet your family', 18, 444, Math.random() * 10 - 5, 'red');
 
-		createCard('/demo', 'card5', 'Hello this is fun', roundRand(600), roundRand(300), Math.random() * 10 - 5, 'yellow');
-		createCard('/demo', 'card6', 'Hello this is a new card.', roundRand(600), roundRand(300), Math.random() * 10 - 5, 'yellow');
-		createCard('/demo', 'card7', '.', roundRand(600), roundRand(300), Math.random() * 10 - 5, 'blue');
-		createCard('/demo', 'card8', '.', roundRand(600), roundRand(300), Math.random() * 10 - 5, 'green');
+		db.createRow(room_name, 'row123', {id: 'row123', text: 'Other tasks...', y: 400});
 	});
 }
-//
 
 /**************
  SETUP DATABASE ON FIRST RUN
