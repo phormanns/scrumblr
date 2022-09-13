@@ -22,12 +22,12 @@ nconf.argv()
 .file({ file: 'config.json' });
 
 // Now set default config values:
-nconf.set('server:baseurl', '/');
-nconf.set('server:host', '127.0.0.1');
-nconf.set('server:port', 3000);
+// nconf.set('server:baseurl', '/');
+// nconf.set('server:host', '127.0.0.1');
+// nconf.set('server:port', 3000);
 
-nconf.set('redis:url', 'redis://127.0.0.1:6379');
-nconf.set('redis:prefix', '#scrumblr#');
+// nconf.set('redis:url', 'redis://127.0.0.1:6379');
+// nconf.set('redis:prefix', '#scrumblr#');
 
 console.log('NODE_ENV: ' + nconf.get('NODE_ENV'));
 console.log('server: ' + JSON.stringify(nconf.get('server')));
