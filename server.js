@@ -1,9 +1,9 @@
 /**************
  SYSTEM INCLUDES
 **************/
-var	http = require('http');
-var sys = require('sys');
-var	async = require('async');
+var http = require('http');
+var sys = require('util');
+var async = require('async');
 var sanitizer = require('sanitizer');
 var sanitizeMarkdown = require('sanitize-markdown');
 var compression = require('compression');
