@@ -8,7 +8,6 @@ var sanitizer = require('sanitizer');
 var compression = require('compression');
 var express = require('express');
 // var conf = require('./config.js').server;
-// var ga = require('./config.js').googleanalytics;
 var nconf = require('nconf');
 
 /*************
@@ -25,8 +24,6 @@ nconf.argv()
 // Now set default config values:
 nconf.set('server:baseurl', '/');
 nconf.set('server:port', 8080);
-
-nconf.set('ga:account', 'UA-2069672-4');
 
 nconf.set('redis:url', 'redis://127.0.0.1:6379');
 nconf.set('redis:prefix', '#scrumblr#');
@@ -58,9 +55,6 @@ app.set('view engine', 'pug');
 
 app.use(compression());
 app.use(nconf.get('server:baseurl'), router);
-
-// app.locals.ga = ga.enabled;
-// app.locals.gaAccount = ga.account;
 
 router.use(express.static(__dirname + '/client'));
 
