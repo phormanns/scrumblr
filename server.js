@@ -36,7 +36,7 @@ router.use(express.static(__dirname + '/client'));
 var server = require('http').Server(app);
 server.listen(conf.port, conf.host);
 
-console.log('Server running at http://' conf.host + ':' + conf.port + '/');
+console.log('Server running at http://' + conf.host + ':' + conf.port + '/');
 
 /**************
  SETUP Socket.IO
