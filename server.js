@@ -23,7 +23,8 @@ nconf.argv()
 
 // Now set default config values:
 nconf.set('server:baseurl', '/');
-nconf.set('server:port', 8080);
+nconf.set('server:host', '127.0.0.1');
+nconf.set('server:port', 37080);
 
 nconf.set('redis:url', 'redis://127.0.0.1:6379');
 nconf.set('redis:prefix', '#scrumblr#');
