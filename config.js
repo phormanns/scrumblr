@@ -1,8 +1,9 @@
 var argv = require('yargs')
-        .usage('Usage: $0 [--port INTEGER [8080]] [--baseurl STRING ["/"]] [--redis STRING:INT [127.0.0.1:6379]] [--mongodb STRING:INT [127.0.0.1:27017]] [--gaEnabled] [--gaAccount STRING [UA-2069672-4]]')
+        .usage('Usage: $0 [--host STRING [127.0.0.1]] [--port INTEGER [8080]] [--baseurl STRING ["/"]] [--redis STRING:INT [127.0.0.1:6379]] [--mongodb STRING:INT [127.0.0.1:27017]]')
         .argv;
 
 exports.server = {
+	host: argv.host || '127.0.0.1',
 	port: argv.port || 8080,
 	baseurl: argv.baseurl || '/'
 };
