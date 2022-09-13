@@ -24,7 +24,7 @@ nconf.argv()
 // Now set default config values:
 nconf.set('server:baseurl', '/');
 nconf.set('server:host', '127.0.0.1');
-nconf.set('server:port', 37080);
+nconf.set('server:port', 3000);
 
 nconf.set('redis:url', 'redis://127.0.0.1:6379');
 nconf.set('redis:prefix', '#scrumblr#');
@@ -73,8 +73,8 @@ var server = require('http').Server(app);
 const options = { path: '/socketio' };
 const io = require('socket.io')(server, options);
 
-server.listen(nconf.get('server:port'));
-console.log('Server running at port:' + nconf.get('server:port') + '/');
+server.listen(nconf.get('server:port'), nconf.get('server:host'));
+console.log('Server running at port:' + nconf.get('server:host') + ':' + nconf.get('server:port') + '/');
 
 
 /**************
